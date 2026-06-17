@@ -1,13 +1,15 @@
 import sys
 import os
 
-sys.path.append(os.path.abspath("backend"))
+sys.path.append(os.path.abspath("backend/ml"))
+sys.path.append(os.path.abspath("backend/explainability"))
+sys.path.append(os.path.abspath("backend/knowledge_graph"))
 
 import torch
 
-from ml.train import IntrusionDetector
-from explainability.explainer import generate_explanation
-
+from train import IntrusionDetector
+from explainer import generate_explanation
+from graph_builder import get_attack_context
 
 def predict_attack():
 
@@ -35,10 +37,18 @@ def predict_attack():
             dim=1
         )
 
+        attack_name = f"Class {prediction.item()}"
+
     result = generate_explanation(
-        f"Class {prediction.item()}",
+        attack_name,
         confidence.item()
     )
+
+    result["knowledge_graph"] = get_attack_context(
+        attack_name
+    )
+
+    print(result)
 
     return result
 
