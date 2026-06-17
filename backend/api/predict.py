@@ -1,6 +1,7 @@
 import sys
 import os
 
+sys.path.append(os.path.abspath("backend"))
 sys.path.append(os.path.abspath("backend/ml"))
 sys.path.append(os.path.abspath("backend/explainability"))
 sys.path.append(os.path.abspath("backend/knowledge_graph"))
@@ -10,6 +11,9 @@ import torch
 from train import IntrusionDetector
 from explainer import generate_explanation
 from graph_builder import get_attack_context
+from symbolic.fusion import fuse_predictions
+from symbolic.rule_engine import detect_attack_rules
+
 
 class_names = {
     0: "DDoS",
@@ -17,12 +21,16 @@ class_names = {
     2: "BruteForce"
 }
 
+
 def predict_attack():
 
     input_size = 78
     num_classes = 15
 
-    model = IntrusionDetector(input_size, num_classes)
+    model = IntrusionDetector(
+        input_size,
+        num_classes
+    )
 
     model.load_state_dict(
         torch.load("backend/ml/intrusion_detector.pth")
@@ -36,25 +44,42 @@ def predict_attack():
 
         output = model(sample)
 
-        probabilities = torch.softmax(output, dim=1)
+        probabilities = torch.softmax(
+            output,
+            dim=1
+        )
 
         confidence, prediction = torch.max(
             probabilities,
             dim=1
         )
 
-        attack_name = class_names.get(
+    attack_name = class_names.get(
         prediction.item(),
         "Unknown Attack"
-)
+    )
+
+    # Symbolic Rule Engine
+    rule_prediction = detect_attack_rules(sample)
+
+    print("ML Prediction:", attack_name)
+    print("Rule Prediction:", rule_prediction)
+
+    # Fusion Layer
+    final_prediction = fuse_predictions(
+        attack_name,
+        rule_prediction
+    )
+
+    print("Final Prediction:", final_prediction)
 
     result = generate_explanation(
-        attack_name,
+        final_prediction,
         confidence.item()
     )
 
     result["knowledge_graph"] = get_attack_context(
-        attack_name
+        final_prediction
     )
 
     print(result)

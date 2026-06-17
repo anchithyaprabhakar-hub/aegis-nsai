@@ -28,3 +28,16 @@ def explain_prediction(prediction):
         prediction,
         "No symbolic explanation available."
     )
+
+
+def detect_attack_rules(features):
+
+    """
+    Temporary symbolic rule engine.
+    Replace these rules later with actual IDS logic.
+    """
+
+    if features is not None:
+        return "PortScan"
+
+    return "BENIGN"
