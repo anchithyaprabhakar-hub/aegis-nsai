@@ -1,8 +1,19 @@
 attack_relations = {
-    
-    "Class 0": ["High Traffic", "Botnet", "Service Disruption"],
-    "Class 1": ["Reconnaissance", "Open Ports"],
-    "Class 2": ["Credential Theft", "Password Attack"]
+    "DDoS": [
+        "High Traffic",
+        "Botnet",
+        "Service Disruption"
+    ],
+
+    "PortScan": [
+        "Reconnaissance",
+        "Open Ports"
+    ],
+
+    "BruteForce": [
+        "Credential Theft",
+        "Password Attack"
+    ]
 }
 
 

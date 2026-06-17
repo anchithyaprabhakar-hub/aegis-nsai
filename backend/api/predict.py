@@ -11,6 +11,12 @@ from train import IntrusionDetector
 from explainer import generate_explanation
 from graph_builder import get_attack_context
 
+class_names = {
+    0: "DDoS",
+    1: "PortScan",
+    2: "BruteForce"
+}
+
 def predict_attack():
 
     input_size = 78
@@ -37,7 +43,10 @@ def predict_attack():
             dim=1
         )
 
-        attack_name = f"Class {prediction.item()}"
+        attack_name = class_names.get(
+        prediction.item(),
+        "Unknown Attack"
+)
 
     result = generate_explanation(
         attack_name,
