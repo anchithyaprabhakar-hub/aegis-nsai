@@ -20,10 +20,10 @@ function App() {
         <div className="card">
 
           <h3>Prediction</h3>
-          <p>{data.prediction}</p>
+          <p><strong>{data.prediction}</strong></p>
 
           <h3>Confidence</h3>
-          <p>{data.confidence}%</p>
+          <p><strong>{data.confidence}%</strong></p>
 
           <h3>Explanation</h3>
           <p>{data.message}</p>
@@ -38,7 +38,9 @@ function App() {
 
         </div>
       ) : (
-        <h3>Loading...</h3>
+        <div className="loading">
+          Initializing AI Engine...
+        </div>
       )}
     </div>
   );
