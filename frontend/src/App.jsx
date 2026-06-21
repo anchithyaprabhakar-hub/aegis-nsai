@@ -1,8 +1,16 @@
 import { useEffect, useState } from "react";
+
 import "./App.css";
 
+import Header from "./components/Header";
+import PredictionCard from "./components/PredictionCard";
+import ConfidenceBar from "./components/ConfidenceBar";
+import ExplanationCard from "./components/ExplanationCard";
+import KnowledgeGraph from "./components/KnowledgeGraph";
+import Footer from "./components/Footer";
+
 function App() {
-  const [data, setData] =useState(null);
+  const [data, setData] = useState(null);
 
   useEffect(() => {
     fetch("http://127.0.0.1:8000/predict")
@@ -11,37 +19,33 @@ function App() {
       .catch((err) => console.log(err));
   }, []);
 
+  if (!data) {
+    return (
+      <div className="loading">
+        Initializing AI Engine...
+      </div>
+    );
+  }
+
   return (
     <div className="container">
-      <h1>AEGIS-NSAI</h1>
-      <h2>Neuro-Symbolic Intrusion Detection System</h2>
 
-      {data ? (
-        <div className="card">
+      <Header />
 
-          <h3>Prediction</h3>
-          <p><strong>{data.prediction}</strong></p>
+      <div className="dashboard">
 
-          <h3>Confidence</h3>
-          <p><strong>{data.confidence}%</strong></p>
+        <PredictionCard prediction={data.prediction} />
 
-          <h3>Explanation</h3>
-          <p>{data.message}</p>
+        <ConfidenceBar confidence={data.confidence} />
 
-          <h3>Knowledge Graph</h3>
+        <ExplanationCard message={data.message} />
 
-          <ul>
-            {data.knowledge_graph.map((item, index) => (
-              <li key={index}>{item}</li>
-            ))}
-          </ul>
+        <KnowledgeGraph graph={data.knowledge_graph} />
 
-        </div>
-      ) : (
-        <div className="loading">
-          Initializing AI Engine...
-        </div>
-      )}
+      </div>
+
+      <Footer />
+
     </div>
   );
 }
