@@ -231,3 +231,24 @@ body{
     }
 
 }
+.logs{
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+    margin-top:20px;
+}
+
+.logs p{
+    margin:0;
+    padding:14px;
+    background:#111;
+    border:1px solid #2d2d2d;
+    border-radius:10px;
+    font-family:monospace;
+    color:#dcdcdc;
+    transition:.3s;
+}
+
+.logs p:hover{
+    background:#1d1d1d;
+}

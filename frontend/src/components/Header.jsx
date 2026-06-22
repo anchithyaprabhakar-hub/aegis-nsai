@@ -1,5 +1,18 @@
+import { useEffect, useState } from "react";
+
 function Header() {
-  const now = new Date();
+
+  const [time, setTime] = useState(new Date());
+
+  useEffect(() => {
+
+    const timer = setInterval(() => {
+      setTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+
+  }, []);
 
   return (
     <>
@@ -11,19 +24,17 @@ function Header() {
         </div>
 
         <div className="time">
-          {now.toLocaleString()}
+          {time.toLocaleString()}
         </div>
 
       </div>
 
       <header className="header">
-
         <h1>AEGIS-NSAI</h1>
 
         <p className="subtitle">
           Neuro-Symbolic Intrusion Detection System
         </p>
-
       </header>
     </>
   );
