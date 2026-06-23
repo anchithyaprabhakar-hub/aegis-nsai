@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import "./App.css";
 
 import Header from "./components/Header";
+import SummaryCard from "./components/SummaryCard";
 import StatsCard from "./components/StatsCard";
 import ThreatLevel from "./components/ThreatLevel";
 import DashboardGrid from "./components/DashboardGrid";
@@ -11,6 +12,14 @@ import ExplanationCard from "./components/ExplanationCard";
 import KnowledgeGraph from "./components/KnowledgeGraph";
 import DetectionDetails from "./components/DetectionDetails";
 import Footer from "./components/Footer";
+
+import {
+  FaShieldAlt,
+  FaBrain,
+  FaChartLine,
+  FaNetworkWired,
+  FaClock
+} from "react-icons/fa";
 
 function App() {
 
@@ -28,7 +37,7 @@ function App() {
   if (!data) {
     return (
       <div className="loading">
-        Initializing AI Engine...
+        Loading Neuro-Symbolic AI Engine...
       </div>
     );
   }
@@ -41,23 +50,34 @@ function App() {
 
       <DashboardGrid>
 
-        <StatsCard
+        <SummaryCard
+          icon={<FaShieldAlt />}
           title="Prediction"
           value={data.prediction}
         />
 
-        <StatsCard
+        <SummaryCard
+          icon={<FaChartLine />}
           title="Confidence"
           value={`${data.confidence}%`}
         />
 
-        <StatsCard
-          title="Risk Score"
-          value="76 / 100"
+        <SummaryCard
+          icon={<FaBrain />}
+          title="AI Engine"
+          value="Neuro-Symbolic"
         />
 
-        <ThreatLevel
-          level="Medium"
+        <SummaryCard
+          icon={<FaNetworkWired />}
+           title="Knowledge Graph"
+           value="76 / 100"
+        />
+
+        <SummaryCard
+          icon={<FaClock />}
+          title="Detection Time"
+          value={new Date().toLocaleTimeString()}
         />
 
       </DashboardGrid>
@@ -81,7 +101,7 @@ function App() {
       {/* <DetectionDetails /> */}
 
     {/* <Footer /> */}
-    
+
     </div>
 
   );
