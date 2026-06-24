@@ -1,4 +1,18 @@
+import { useState } from "react";
+
 function FileUpload() {
+
+  const [fileName, setFileName] = useState("");
+
+  const handleFileChange = (event) => {
+
+    const file = event.target.files[0];
+
+    if (file) {
+      setFileName(file.name);
+    }
+
+  };
 
   return (
 
@@ -9,7 +23,14 @@ function FileUpload() {
       <input
         type="file"
         accept=".csv"
+        onChange={handleFileChange}
       />
+
+      {fileName && (
+        <p style={{ marginTop: "15px" }}>
+          Selected: {fileName}
+        </p>
+      )}
 
     </div>
 
