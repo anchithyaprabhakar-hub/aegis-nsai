@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import "./App.css";
 
 import Header from "./components/Header";
+import FileUpload from "./components/FileUpload";
 import SummaryCard from "./components/SummaryCard";
 import StatsCard from "./components/StatsCard";
 import ThreatLevel from "./components/ThreatLevel";
@@ -47,6 +48,8 @@ function App() {
     <div className="container">
 
       <Header />
+
+      <FileUpload />
 
       <DashboardGrid>
 

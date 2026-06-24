@@ -252,3 +252,29 @@ body{
 .logs p:hover{
     background:#1d1d1d;
 }
+
+input[type=file]{
+
+    width:100%;
+    margin-top:20px;
+    color:white;
+
+}
+
+input::file-selector-button{
+
+    background:#ffffff;
+    color:#000;
+    border:none;
+    padding:12px 20px;
+    border-radius:10px;
+    cursor:pointer;
+    font-weight:600;
+
+}
+
+input::file-selector-button:hover{
+
+    background:#d9d9d9;
+
+}
