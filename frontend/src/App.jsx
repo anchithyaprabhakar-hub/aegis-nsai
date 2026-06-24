@@ -73,14 +73,26 @@ function App() {
 
         <SummaryCard
           icon={<FaNetworkWired />}
-           title="Knowledge Graph"
-           value="76 / 100"
+           title="Risk Score"
+           value={`${Math.round(data.confidence * 8)} / 100`}
         />
 
         <SummaryCard
           icon={<FaClock />}
           title="Detection Time"
           value={new Date().toLocaleTimeString()}
+        />
+
+        <SummaryCard
+          icon={<FaShieldAlt />}
+          title="Threat Level"
+          value={
+          data.confidence >= 70
+          ? "High"
+          : data.confidence >= 40
+          ? "Medium"
+          : "Low"
+          }
         />
 
       </DashboardGrid>
