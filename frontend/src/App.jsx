@@ -1,58 +1,51 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import "./App.css";
 
 import Header from "./components/Header";
 import FileUpload from "./components/FileUpload";
 import SummaryCard from "./components/SummaryCard";
-import StatsCard from "./components/StatsCard";
-import ThreatLevel from "./components/ThreatLevel";
 import DashboardGrid from "./components/DashboardGrid";
 import PredictionCard from "./components/PredictionCard";
 import ConfidenceBar from "./components/ConfidenceBar";
 import ExplanationCard from "./components/ExplanationCard";
 import KnowledgeGraph from "./components/KnowledgeGraph";
-import DetectionDetails from "./components/DetectionDetails";
-import Footer from "./components/Footer";
 
 import {
   FaShieldAlt,
   FaBrain,
   FaChartLine,
   FaNetworkWired,
-  FaClock
+  FaClock,
 } from "react-icons/fa";
 
 function App() {
-
   const [data, setData] = useState(null);
 
-  useEffect(() => {
-
-    fetch("http://127.0.0.1:8000/predict")
-      .then((res) => res.json())
-      .then((result) => setData(result))
-      .catch(console.error);
-
-  }, []);
+  const handlePrediction = (result) => {
+    setData(result);
+  };
 
   if (!data) {
     return (
-      <div className="loading">
-        Loading Neuro-Symbolic AI Engine...
+      <div className="container">
+        <Header />
+
+        <FileUpload onPrediction={handlePrediction} />
+
+        <div className="loading">
+          Upload a CSV file to begin analysis.
+        </div>
       </div>
     );
   }
 
   return (
-
     <div className="container">
-
       <Header />
 
-      <FileUpload />
+      <FileUpload onPrediction={handlePrediction} />
 
       <DashboardGrid>
-
         <SummaryCard
           icon={<FaShieldAlt />}
           title="Prediction"
@@ -73,8 +66,8 @@ function App() {
 
         <SummaryCard
           icon={<FaNetworkWired />}
-           title="Risk Score"
-           value={`${Math.round(data.confidence * 8)} / 100`}
+          title="Risk Score"
+          value={`${Math.round(data.confidence * 8)} / 100`}
         />
 
         <SummaryCard
@@ -87,20 +80,18 @@ function App() {
           icon={<FaShieldAlt />}
           title="Threat Level"
           value={
-          data.confidence >= 70
-          ? "High"
-          : data.confidence >= 40
-          ? "Medium"
-          : "Low"
+            data.confidence >= 70
+              ? "High"
+              : data.confidence >= 40
+              ? "Medium"
+              : "Low"
           }
         />
-
       </DashboardGrid>
 
       <br />
 
       <DashboardGrid>
-
         <PredictionCard prediction={data.prediction} />
 
         <ConfidenceBar confidence={data.confidence} />
@@ -108,19 +99,9 @@ function App() {
         <ExplanationCard message={data.message} />
 
         <KnowledgeGraph graph={data.knowledge_graph} />
-
       </DashboardGrid>
-
-      <br />
-
-      {/* <DetectionDetails /> */}
-
-    {/* <Footer /> */}
-
     </div>
-
   );
-
 }
 
 export default App;

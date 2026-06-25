@@ -1,5 +1,6 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
+import pandas as pd
 from backend.api.predict import predict_attack
 
 app = FastAPI()
@@ -31,6 +32,7 @@ def home():
         "status": "running"
     }
 
-@app.get("/predict")
-def predict():
-    return predict_attack()
+@app.post("/predict")
+async def predict(file: UploadFile = File(...)):
+    df = pd.read_csv(file.file)
+    return predict_attack(df)

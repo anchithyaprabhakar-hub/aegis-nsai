@@ -7,6 +7,10 @@ sys.path.append(os.path.abspath("backend/explainability"))
 sys.path.append(os.path.abspath("backend/knowledge_graph"))
 
 import torch
+import pandas as pd
+
+from preprocess import clean_dataset
+from feature_engineering import prepare_dataset
 
 from train import IntrusionDetector
 from explainer import generate_explanation
@@ -22,7 +26,7 @@ class_names = {
 }
 
 
-def predict_attack():
+def predict_attack(df):
 
     input_size = 78
     num_classes = 15
@@ -33,12 +37,25 @@ def predict_attack():
     )
 
     model.load_state_dict(
-        torch.load("backend/ml/intrusion_detector.pth")
+        torch.load(
+            "backend/ml/intrusion_detector.pth",
+            map_location=torch.device("cpu")
+        )
     )
 
     model.eval()
 
-    sample = torch.randn(1, 78)
+    # Clean uploaded CSV
+    df = clean_dataset(df)
+
+    # Prepare features
+    X, _, _ = prepare_dataset(df)
+
+    # Use the first row for prediction
+    sample = torch.tensor(
+        X[0:1],
+        dtype=torch.float32
+    )
 
     with torch.no_grad():
 
@@ -65,7 +82,7 @@ def predict_attack():
     print("ML Prediction:", attack_name)
     print("Rule Prediction:", rule_prediction)
 
-    # Fusion Layer
+    # Neuro-Symbolic Fusion
     final_prediction = fuse_predictions(
         attack_name,
         rule_prediction
@@ -88,4 +105,9 @@ def predict_attack():
 
 
 if __name__ == "__main__":
-    print(predict_attack())
+
+    sample_df = pd.read_csv(
+        "datasets/cic-ids2017/MachineLearningCVE/Monday-WorkingHours.pcap_ISCX.csv"
+    )
+
+    print(predict_attack(sample_df))
