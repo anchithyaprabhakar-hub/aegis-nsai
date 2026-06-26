@@ -77,16 +77,28 @@ function App() {
         />
 
         <SummaryCard
-          icon={<FaShieldAlt />}
-          title="Threat Level"
-          value={
-            data.confidence >= 70
-              ? "High"
-              : data.confidence >= 40
-              ? "Medium"
-              : "Low"
-          }
-        />
+  icon={<FaShieldAlt />}
+  title="Threat Level"
+  value={
+    <span
+      style={{
+        color:
+          data.confidence >= 70
+            ? "#ef4444"
+            : data.confidence >= 40
+            ? "#f59e0b"
+            : "#22c55e",
+        fontWeight: "bold",
+      }}
+    >
+      {data.confidence >= 70
+        ? "HIGH"
+        : data.confidence >= 40
+        ? "MEDIUM"
+        : "LOW"}
+    </span>
+  }
+/>
       </DashboardGrid>
 
       <br />
