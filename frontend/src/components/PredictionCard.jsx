@@ -1,32 +1,16 @@
 function PredictionCard({ prediction }) {
-
-  const getColor = () => {
-
-    switch (prediction) {
-
-      case "BENIGN":
-        return "green";
-
-      case "PortScan":
-        return "orange";
-
-      case "DDoS":
-        return "red";
-
-      default:
-        return "blue";
-    }
-  };
-
   return (
     <div className="info-card">
-
       <h3>Prediction</h3>
 
-      <span className={`badge ${getColor()}`}>
+      <h1
+        style={{
+          color: "#ff4d4f",
+          marginTop: "20px",
+        }}
+      >
         {prediction}
-      </span>
-
+      </h1>
     </div>
   );
 }
