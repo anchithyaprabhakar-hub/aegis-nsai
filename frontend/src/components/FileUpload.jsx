@@ -48,16 +48,24 @@ function FileUpload({ onPrediction }) {
       <h3>Upload Network Traffic CSV</h3>
 
       <input
-        type="file"
-        accept=".csv"
-        onChange={handleFileChange}
-      />
+  type="file"
+  accept=".csv"
+  onChange={handleFileChange}
+/>
 
-      {file && (
-        <p style={{ marginTop: "15px" }}>
-          Selected: {file.name}
-        </p>
-      )}
+{file && (
+  <p
+    style={{
+      marginTop: "20px",
+      textAlign: "center",
+      color: "#d1d5db",
+      fontSize: "18px",
+      fontWeight: "500",
+    }}
+  >
+    📄 {file.name}
+  </p>
+)}
 
       <button
         onClick={handleUpload}

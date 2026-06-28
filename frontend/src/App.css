@@ -270,11 +270,9 @@ body{
 }
 
 input[type=file]{
-
-    width:100%;
     margin-top:20px;
-    color:white;
-
+    color:transparent;
+    font-size:0;
 }
 
 input::file-selector-button{
@@ -286,6 +284,7 @@ input::file-selector-button{
     border-radius:10px;
     cursor:pointer;
     font-weight:600;
+    font-size:16px;
 
 }
 
