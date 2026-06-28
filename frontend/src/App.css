@@ -294,3 +294,30 @@ input::file-selector-button:hover{
     background:#d9d9d9;
 
 }
+
+.recent-logs{
+    grid-column:1/-1;
+}
+
+.log-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    background:#111;
+    padding:16px 20px;
+    margin-bottom:12px;
+    border-radius:12px;
+    border:1px solid #2d2d2d;
+    transition:.3s;
+}
+
+.log-row:hover{
+    border-color:#22c55e;
+    transform:translateX(4px);
+}
+
+.log-row span{
+    color:#ffffff;
+    font-size:16px;
+    font-weight:500;
+}

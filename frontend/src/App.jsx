@@ -9,6 +9,7 @@ import PredictionCard from "./components/PredictionCard";
 import ConfidenceBar from "./components/ConfidenceBar";
 import ExplanationCard from "./components/ExplanationCard";
 import KnowledgeGraph from "./components/KnowledgeGraph";
+import RecentLogs from "./components/RecentLogs";
 
 import {
   FaShieldAlt,
@@ -20,9 +21,21 @@ import {
 
 function App() {
   const [data, setData] = useState(null);
+  const [logs, setLogs] = useState([]);
 
   const handlePrediction = (result) => {
     setData(result);
+
+    const newLog = {
+      prediction: result.prediction,
+      confidence: result.confidence,
+      time: new Date().toLocaleTimeString(),
+    };
+
+    setLogs((previousLogs) => [
+      newLog,
+      ...previousLogs.slice(0, 9),
+    ]);
   };
 
   if (!data) {
@@ -77,28 +90,16 @@ function App() {
         />
 
         <SummaryCard
-  icon={<FaShieldAlt />}
-  title="Threat Level"
-  value={
-    <span
-      style={{
-        color:
-          data.confidence >= 70
-            ? "#ef4444"
-            : data.confidence >= 40
-            ? "#f59e0b"
-            : "#22c55e",
-        fontWeight: "bold",
-      }}
-    >
-      {data.confidence >= 70
-        ? "HIGH"
-        : data.confidence >= 40
-        ? "MEDIUM"
-        : "LOW"}
-    </span>
-  }
-/>
+          icon={<FaShieldAlt />}
+          title="Threat Level"
+          value={
+            data.confidence >= 70
+              ? "High"
+              : data.confidence >= 40
+              ? "Medium"
+              : "Low"
+          }
+        />
       </DashboardGrid>
 
       <br />
@@ -112,6 +113,10 @@ function App() {
 
         <KnowledgeGraph graph={data.knowledge_graph} />
       </DashboardGrid>
+
+      <br />
+
+      <RecentLogs logs={logs} />
     </div>
   );
 }
