@@ -48,10 +48,28 @@ function FileUpload({ onPrediction }) {
       <h3>Upload Network Traffic CSV</h3>
 
       <input
+  id="csv-upload"
   type="file"
   accept=".csv"
   onChange={handleFileChange}
+  style={{ display: "none" }}
 />
+
+<label
+  htmlFor="csv-upload"
+  style={{
+    display: "inline-block",
+    marginTop: "20px",
+    padding: "12px 22px",
+    background: "#fff",
+    color: "#000",
+    borderRadius: "10px",
+    cursor: "pointer",
+    fontWeight: "600",
+  }}
+>
+  Choose File
+</label>
 
 {file && (
   <p

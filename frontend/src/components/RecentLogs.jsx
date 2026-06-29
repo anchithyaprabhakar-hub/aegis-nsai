@@ -8,10 +8,17 @@ function RecentLogs({ logs }) {
       ) : (
         <div className="logs">
           {logs.map((log, index) => (
-            <div className="log-row" key={index}>
+            <div
+              key={index}
+              className={`log-row ${index === 0 ? "latest-row" : ""}`}
+            >
               <span>{log.time}</span>
               <span>{log.prediction}</span>
               <span>{log.confidence}%</span>
+
+              {index === 0 && (
+                <span className="latest-badge">● Latest</span>
+              )}
             </div>
           ))}
         </div>
