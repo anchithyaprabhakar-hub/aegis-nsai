@@ -2,6 +2,7 @@ import { useState } from "react";
 
 function FileUpload({ onPrediction }) {
   const [file, setFile] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   const handleFileChange = (event) => {
     const selectedFile = event.target.files[0];
@@ -17,6 +18,8 @@ function FileUpload({ onPrediction }) {
       return;
     }
 
+    setLoading(true);
+
     const formData = new FormData();
     formData.append("file", file);
 
@@ -30,16 +33,16 @@ function FileUpload({ onPrediction }) {
         throw new Error("Server Error");
       }
 
-    const result = await response.json();
+      const result = await response.json();
 
-    alert(JSON.stringify(result));
+      console.log(result);
 
-    console.log(result);
-
-    onPrediction(result);
+      onPrediction(result);
     } catch (error) {
       console.error(error);
       alert("Upload failed.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -48,57 +51,60 @@ function FileUpload({ onPrediction }) {
       <h3>Upload Network Traffic CSV</h3>
 
       <input
-  id="csv-upload"
-  type="file"
-  accept=".csv"
-  onChange={handleFileChange}
-  style={{ display: "none" }}
-/>
+        id="csv-upload"
+        type="file"
+        accept=".csv"
+        onChange={handleFileChange}
+        style={{ display: "none" }}
+      />
 
-<label
-  htmlFor="csv-upload"
-  style={{
-    display: "inline-block",
-    marginTop: "20px",
-    padding: "12px 22px",
-    background: "#fff",
-    color: "#000",
-    borderRadius: "10px",
-    cursor: "pointer",
-    fontWeight: "600",
-  }}
->
-  Choose File
-</label>
-
-{file && (
-  <p
-    style={{
-      marginTop: "20px",
-      textAlign: "center",
-      color: "#d1d5db",
-      fontSize: "18px",
-      fontWeight: "500",
-    }}
-  >
-    📄 {file.name}
-  </p>
-)}
-
-      <button
-        onClick={handleUpload}
+      <label
+        htmlFor="csv-upload"
         style={{
+          display: "inline-block",
           marginTop: "20px",
-          padding: "10px 20px",
-          cursor: "pointer",
-          border: "none",
-          borderRadius: "8px",
+          padding: "12px 22px",
           background: "#ffffff",
-          color: "#000000",
+          color: "#000",
+          borderRadius: "10px",
+          cursor: "pointer",
           fontWeight: "600",
         }}
       >
-        Analyze CSV
+        Choose File
+      </label>
+
+      {file && (
+        <p
+          style={{
+            marginTop: "25px",
+            textAlign: "center",
+            color: "#d1d5db",
+            fontSize: "18px",
+            fontWeight: "500",
+          }}
+        >
+          📄 {file.name}
+        </p>
+      )}
+
+      <button
+        onClick={handleUpload}
+        disabled={loading}
+        style={{
+          marginTop: "20px",
+          padding: "12px 22px",
+          cursor: loading ? "not-allowed" : "pointer",
+          border: "none",
+          borderRadius: "10px",
+          background: "#ffffff",
+          color: "#000000",
+          fontWeight: "600",
+          opacity: loading ? 0.7 : 1,
+          transition: "0.3s",
+        }}
+      >
+        {loading ? "Analyzing..." : "Analyze CSV"}
       </button>
     </div>
   );

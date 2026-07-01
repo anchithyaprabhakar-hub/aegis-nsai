@@ -1,7 +1,7 @@
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
-from backend.api.predict import predict_attack
+from api.predict import predict_attack
 
 app = FastAPI()
 

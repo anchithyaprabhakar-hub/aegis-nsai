@@ -1,20 +1,13 @@
-import sys
-import os
-
-sys.path.append(os.path.abspath("backend"))
-sys.path.append(os.path.abspath("backend/ml"))
-sys.path.append(os.path.abspath("backend/explainability"))
-sys.path.append(os.path.abspath("backend/knowledge_graph"))
-
 import torch
 import pandas as pd
 
-from preprocess import clean_dataset
-from feature_engineering import prepare_dataset
+from ml.preprocess import clean_dataset
+from ml.feature_engineering import prepare_dataset
+from ml.train import IntrusionDetector
 
-from train import IntrusionDetector
-from explainer import generate_explanation
-from graph_builder import get_attack_context
+from explainability.explainer import generate_explanation
+from knowledge_graph.graph_builder import get_attack_context
+
 from symbolic.fusion import fuse_predictions
 from symbolic.rule_engine import detect_attack_rules
 
@@ -38,7 +31,7 @@ def predict_attack(df):
 
     model.load_state_dict(
         torch.load(
-            "backend/ml/intrusion_detector.pth",
+            "ml/intrusion_detector.pth",
             map_location=torch.device("cpu")
         )
     )
@@ -107,7 +100,7 @@ def predict_attack(df):
 if __name__ == "__main__":
 
     sample_df = pd.read_csv(
-        "datasets/cic-ids2017/MachineLearningCVE/Monday-WorkingHours.pcap_ISCX.csv"
+        "../datasets/cic-ids2017/MachineLearningCVE/Monday-WorkingHours.pcap_ISCX.csv"
     )
 
     print(predict_attack(sample_df))
