@@ -41,12 +41,37 @@ function App() {
     ]);
   };
 
-  const threatLevel =
-    data?.confidence >= 70
-      ? "High"
-      : data?.confidence >= 40
-      ? "Medium"
-      : "Low";
+  // ----------------------------
+  // Dynamic Threat Level
+  // ----------------------------
+  let threatLevel = "Low";
+
+  if (data) {
+    if (data.confidence >= 80) {
+      threatLevel = "Critical";
+    } else if (data.confidence >= 60) {
+      threatLevel = "High";
+    } else if (data.confidence >= 30) {
+      threatLevel = "Medium";
+    }
+  }
+
+  // ----------------------------
+  // Attack Description
+  // ----------------------------
+  const attackDescriptions = {
+    PortScan:
+      "Attempts to discover open ports and running services on the target system.",
+
+    DDoS:
+      "Floods the target with excessive traffic to disrupt service availability.",
+
+    BruteForce:
+      "Repeated login attempts to gain unauthorized system access.",
+
+    Benign:
+      "Normal network activity with no malicious behaviour detected.",
+  };
 
   return (
     <div className="container">
@@ -62,6 +87,7 @@ function App() {
       ) : (
         <>
           <DashboardGrid>
+
             <SummaryCard
               icon={<FaShieldAlt />}
               title="Prediction"
@@ -83,7 +109,7 @@ function App() {
             <SummaryCard
               icon={<FaNetworkWired />}
               title="Risk Score"
-              value={`${Math.round(data.confidence * 8)} / 100`}
+              value={`${Math.round(data.confidence)} / 100`}
             />
 
             <SummaryCard
@@ -97,23 +123,55 @@ function App() {
               title="Threat Level"
               value={threatLevel}
             />
+
           </DashboardGrid>
 
           <br />
 
           <DashboardGrid>
+
             <PredictionCard prediction={data.prediction} />
 
             <ConfidenceBar confidence={data.confidence} />
 
-            <ExplanationCard message={data.message} />
+            <ExplanationCard
+              prediction={data.prediction}
+              confidence={data.confidence}
+              message={data.message}
+            />
 
             <KnowledgeGraph graph={data.knowledge_graph} />
+
           </DashboardGrid>
+
+          {/* Attack Description */}
+
+          <div
+            className="info-card"
+            style={{
+              marginTop: "25px",
+              textAlign: "center",
+            }}
+          >
+            <h3>Attack Description</h3>
+
+            <p
+              style={{
+                marginTop: "18px",
+                color: "#d1d5db",
+                fontSize: "17px",
+                lineHeight: "1.8",
+              }}
+            >
+              {attackDescriptions[data.prediction] ||
+                "Unknown network behaviour detected."}
+            </p>
+          </div>
 
           <br />
 
           <RecentLogs logs={logs} />
+
         </>
       )}
 

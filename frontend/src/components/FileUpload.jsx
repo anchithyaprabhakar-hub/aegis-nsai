@@ -1,4 +1,12 @@
 import { useState } from "react";
+import {
+  FaUpload,
+  FaFileCsv,
+  FaCheckCircle,
+  FaExclamationTriangle,
+  FaSpinner,
+  FaTrash,
+} from "react-icons/fa";
 
 function FileUpload({ onPrediction }) {
   const [file, setFile] = useState(null);
@@ -12,6 +20,14 @@ function FileUpload({ onPrediction }) {
       setFile(selectedFile);
       setStatus("Ready for Analysis");
     }
+  };
+
+  const handleReset = () => {
+    setFile(null);
+    setStatus("Waiting for file");
+
+    const input = document.getElementById("csv-upload");
+    if (input) input.value = "";
   };
 
   const handleUpload = async () => {
@@ -38,8 +54,6 @@ function FileUpload({ onPrediction }) {
 
       const result = await response.json();
 
-      console.log(result);
-
       onPrediction(result);
 
       setStatus("Analysis Complete");
@@ -52,7 +66,7 @@ function FileUpload({ onPrediction }) {
     }
   };
 
-  const statusColor = () => {
+  const getStatusColor = () => {
     switch (status) {
       case "Ready for Analysis":
         return "#38bdf8";
@@ -71,8 +85,25 @@ function FileUpload({ onPrediction }) {
     }
   };
 
+  const getStatusIcon = () => {
+    switch (status) {
+      case "Analysis Complete":
+        return <FaCheckCircle />;
+
+      case "Upload Failed":
+        return <FaExclamationTriangle />;
+
+      case "Analyzing...":
+        return <FaSpinner className="spin" />;
+
+      default:
+        return <FaUpload />;
+    }
+  };
+
   return (
     <div className="info-card" style={{ textAlign: "center" }}>
+
       <h3>Upload Network Traffic CSV</h3>
 
       <input
@@ -87,7 +118,6 @@ function FileUpload({ onPrediction }) {
         style={{
           display: "flex",
           justifyContent: "center",
-          alignItems: "center",
           gap: "18px",
           marginTop: "25px",
           flexWrap: "wrap",
@@ -97,13 +127,11 @@ function FileUpload({ onPrediction }) {
           htmlFor="csv-upload"
           style={{
             padding: "12px 24px",
-            background: "#ffffff",
-            color: "#000000",
+            background: "#fff",
+            color: "#000",
             borderRadius: "10px",
             cursor: loading ? "not-allowed" : "pointer",
             fontWeight: "600",
-            transition: "0.3s",
-            opacity: loading ? 0.7 : 1,
           }}
         >
           Choose File
@@ -111,49 +139,98 @@ function FileUpload({ onPrediction }) {
 
         <button
           onClick={handleUpload}
-          disabled={loading}
+          disabled={loading || !file}
           style={{
             padding: "12px 24px",
             border: "none",
             borderRadius: "10px",
-            background: "#ffffff",
-            color: "#000000",
+            background: "#fff",
+            color: "#000",
             fontWeight: "600",
             cursor: loading ? "not-allowed" : "pointer",
             opacity: loading ? 0.7 : 1,
-            transition: "0.3s",
           }}
         >
           {loading ? "Analyzing..." : "Analyze CSV"}
         </button>
+
+        <button
+          onClick={handleReset}
+          disabled={loading}
+          style={{
+            padding: "12px 20px",
+            border: "1px solid #444",
+            borderRadius: "10px",
+            background: "#1c1c1c",
+            color: "#fff",
+            cursor: loading ? "not-allowed" : "pointer",
+          }}
+        >
+          <FaTrash />
+        </button>
       </div>
 
       {file && (
-        <>
-          <p
+        <div
+          style={{
+            marginTop: "30px",
+            background: "#111",
+            border: "1px solid #2c2c2c",
+            borderRadius: "14px",
+            padding: "18px",
+          }}
+        >
+          <div
             style={{
-              marginTop: "25px",
-              color: "#d1d5db",
-              fontSize: "17px",
-              fontWeight: "500",
-              wordBreak: "break-word",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "10px",
+              color: "#38bdf8",
+              fontSize: "18px",
             }}
           >
-            📄 {file.name}
+            <FaFileCsv />
+
+            <strong>{file.name}</strong>
+          </div>
+
+          <p
+            style={{
+              marginTop: "12px",
+              color: "#9ca3af",
+            }}
+          >
+            Size: {(file.size / 1024).toFixed(2)} KB
           </p>
 
           <p
             style={{
-              marginTop: "10px",
-              color: statusColor(),
-              fontSize: "16px",
+              color: "#9ca3af",
+            }}
+          >
+            Type: {file.type || "text/csv"}
+          </p>
+
+          <div
+            style={{
+              marginTop: "18px",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "8px",
+              padding: "8px 16px",
+              borderRadius: "20px",
+              background: "#222",
+              color: getStatusColor(),
               fontWeight: "700",
             }}
           >
+            {getStatusIcon()}
             {status}
-          </p>
-        </>
+          </div>
+        </div>
       )}
+
     </div>
   );
 }
