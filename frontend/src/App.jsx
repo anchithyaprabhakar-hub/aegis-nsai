@@ -22,9 +22,12 @@ import {
 function App() {
   const [data, setData] = useState(null);
   const [logs, setLogs] = useState([]);
+  const [analysisCount, setAnalysisCount] = useState(0);
 
   const handlePrediction = (result) => {
     setData(result);
+
+    setAnalysisCount((count) => count + 1);
 
     const newLog = {
       prediction: result.prediction,
@@ -38,85 +41,82 @@ function App() {
     ]);
   };
 
-  if (!data) {
-    return (
-      <div className="container">
-        <Header />
-
-        <FileUpload onPrediction={handlePrediction} />
-
-        <div className="loading">
-          Upload a CSV file to begin analysis.
-        </div>
-      </div>
-    );
-  }
+  const threatLevel =
+    data?.confidence >= 70
+      ? "High"
+      : data?.confidence >= 40
+      ? "Medium"
+      : "Low";
 
   return (
     <div className="container">
-      <Header />
+
+      <Header analysisCount={analysisCount} />
 
       <FileUpload onPrediction={handlePrediction} />
 
-      <DashboardGrid>
-        <SummaryCard
-          icon={<FaShieldAlt />}
-          title="Prediction"
-          value={data.prediction}
-        />
+      {!data ? (
+        <div className="loading">
+          Upload a CSV file to begin analysis.
+        </div>
+      ) : (
+        <>
+          <DashboardGrid>
+            <SummaryCard
+              icon={<FaShieldAlt />}
+              title="Prediction"
+              value={data.prediction}
+            />
 
-        <SummaryCard
-          icon={<FaChartLine />}
-          title="Confidence"
-          value={`${data.confidence}%`}
-        />
+            <SummaryCard
+              icon={<FaChartLine />}
+              title="Confidence"
+              value={`${data.confidence}%`}
+            />
 
-        <SummaryCard
-          icon={<FaBrain />}
-          title="AI Engine"
-          value="Neuro-Symbolic"
-        />
+            <SummaryCard
+              icon={<FaBrain />}
+              title="AI Engine"
+              value="Neuro-Symbolic"
+            />
 
-        <SummaryCard
-          icon={<FaNetworkWired />}
-          title="Risk Score"
-          value={`${Math.round(data.confidence * 8)} / 100`}
-        />
+            <SummaryCard
+              icon={<FaNetworkWired />}
+              title="Risk Score"
+              value={`${Math.round(data.confidence * 8)} / 100`}
+            />
 
-        <SummaryCard
-          icon={<FaClock />}
-          title="Detection Time"
-          value={new Date().toLocaleTimeString()}
-        />
+            <SummaryCard
+              icon={<FaClock />}
+              title="Detection Time"
+              value={new Date().toLocaleTimeString()}
+            />
 
-        <SummaryCard
-          icon={<FaShieldAlt />}
-          title="Threat Level"
-          value={
-            data.confidence >= 70
-              ? "High"
-              : data.confidence >= 40
-              ? "Medium"
-              : "Low"
-          }
-        />
-      </DashboardGrid>
+            <SummaryCard
+              icon={<FaShieldAlt />}
+              title="Threat Level"
+              value={threatLevel}
+            />
+          </DashboardGrid>
 
-      <br />
+          <br />
 
-      <DashboardGrid>
-        <PredictionCard prediction={data.prediction} />
+          <DashboardGrid>
+            <PredictionCard prediction={data.prediction} />
 
-        <ConfidenceBar confidence={data.confidence} />
+            <ConfidenceBar confidence={data.confidence} />
 
-        <ExplanationCard message={data.message} />
+            <ExplanationCard message={data.message} />
 
-        <KnowledgeGraph graph={data.knowledge_graph} />
-      </DashboardGrid>
+            <KnowledgeGraph graph={data.knowledge_graph} />
+          </DashboardGrid>
 
-      <br />
+          <br />
 
-      <RecentLogs logs={logs} />
+          <RecentLogs logs={logs} />
+        </>
+      )}
+
     </div>
   );
 }
