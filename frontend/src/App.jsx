@@ -9,6 +9,7 @@ import PredictionCard from "./components/PredictionCard";
 import ConfidenceBar from "./components/ConfidenceBar";
 import ExplanationCard from "./components/ExplanationCard";
 import KnowledgeGraph from "./components/KnowledgeGraph";
+import ThreatRecommendation from "./components/ThreatRecommendation";
 import RecentLogs from "./components/RecentLogs";
 
 import {
