@@ -9,6 +9,7 @@ import PredictionCard from "./components/PredictionCard";
 import ConfidenceBar from "./components/ConfidenceBar";
 import ExplanationCard from "./components/ExplanationCard";
 import KnowledgeGraph from "./components/KnowledgeGraph";
+import AttackChart from "./components/AttackChart";
 import ThreatRecommendation from "./components/ThreatRecommendation";
 import AttackAnalytics from "./components/AttackAnalytics";
 import RecentLogs from "./components/RecentLogs";
@@ -83,6 +84,7 @@ function App() {
         </div>
       ) : (
         <>
+
           {/* Summary Cards */}
 
           <DashboardGrid>
@@ -127,7 +129,7 @@ function App() {
 
           <br />
 
-          {/* Main Analysis */}
+          {/* Prediction */}
 
           <DashboardGrid>
 
@@ -148,6 +150,10 @@ function App() {
 
             <KnowledgeGraph
               graph={data.knowledge_graph}
+            />
+
+            <AttackChart
+              logs={logs}
             />
 
           </DashboardGrid>
@@ -178,7 +184,7 @@ function App() {
 
           <br />
 
-          {/* Recommended Actions */}
+          {/* Recommendations */}
 
           <ThreatRecommendation
             prediction={data.prediction}
@@ -186,7 +192,7 @@ function App() {
 
           <br />
 
-          {/* Attack Analytics */}
+          {/* Analytics */}
 
           <AttackAnalytics
             logs={logs}
