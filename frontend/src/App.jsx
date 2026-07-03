@@ -10,6 +10,7 @@ import ConfidenceBar from "./components/ConfidenceBar";
 import ExplanationCard from "./components/ExplanationCard";
 import KnowledgeGraph from "./components/KnowledgeGraph";
 import ThreatRecommendation from "./components/ThreatRecommendation";
+import AttackAnalytics from "./components/AttackAnalytics";
 import RecentLogs from "./components/RecentLogs";
 
 import {
@@ -181,6 +182,14 @@ function App() {
 
           <ThreatRecommendation
             prediction={data.prediction}
+          />
+
+          <br />
+
+          {/* Attack Analytics */}
+
+          <AttackAnalytics
+            logs={logs}
           />
 
           <br />
