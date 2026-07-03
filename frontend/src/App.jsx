@@ -42,9 +42,7 @@ function App() {
     ]);
   };
 
-  // ----------------------------
   // Dynamic Threat Level
-  // ----------------------------
   let threatLevel = "Low";
 
   if (data) {
@@ -57,9 +55,6 @@ function App() {
     }
   }
 
-  // ----------------------------
-  // Attack Description
-  // ----------------------------
   const attackDescriptions = {
     PortScan:
       "Attempts to discover open ports and running services on the target system.",
@@ -87,6 +82,8 @@ function App() {
         </div>
       ) : (
         <>
+          {/* Summary Cards */}
+
           <DashboardGrid>
 
             <SummaryCard
@@ -98,7 +95,7 @@ function App() {
             <SummaryCard
               icon={<FaChartLine />}
               title="Confidence"
-              value={`${data.confidence}%`}
+              value={`${Number(data.confidence).toFixed(2)}%`}
             />
 
             <SummaryCard
@@ -110,7 +107,7 @@ function App() {
             <SummaryCard
               icon={<FaNetworkWired />}
               title="Risk Score"
-              value={`${Math.round(data.confidence)} / 100`}
+              value={`${Math.round(data.confidence)}/100`}
             />
 
             <SummaryCard
@@ -129,11 +126,18 @@ function App() {
 
           <br />
 
+          {/* Main Analysis */}
+
           <DashboardGrid>
 
-            <PredictionCard prediction={data.prediction} />
+            <PredictionCard
+              prediction={data.prediction}
+              confidence={data.confidence}
+            />
 
-            <ConfidenceBar confidence={data.confidence} />
+            <ConfidenceBar
+              confidence={data.confidence}
+            />
 
             <ExplanationCard
               prediction={data.prediction}
@@ -141,16 +145,19 @@ function App() {
               message={data.message}
             />
 
-            <KnowledgeGraph graph={data.knowledge_graph} />
+            <KnowledgeGraph
+              graph={data.knowledge_graph}
+            />
 
           </DashboardGrid>
+
+          <br />
 
           {/* Attack Description */}
 
           <div
             className="info-card"
             style={{
-              marginTop: "25px",
               textAlign: "center",
             }}
           >
@@ -158,20 +165,31 @@ function App() {
 
             <p
               style={{
-                marginTop: "18px",
-                color: "#d1d5db",
+                marginTop: "20px",
                 fontSize: "17px",
                 lineHeight: "1.8",
               }}
             >
-              {attackDescriptions[data.prediction] ||
+              {attackDescriptions[data.prediction] ??
                 "Unknown network behaviour detected."}
             </p>
           </div>
 
           <br />
 
-          <RecentLogs logs={logs} />
+          {/* Recommended Actions */}
+
+          <ThreatRecommendation
+            prediction={data.prediction}
+          />
+
+          <br />
+
+          {/* Detection History */}
+
+          <RecentLogs
+            logs={logs}
+          />
 
         </>
       )}
