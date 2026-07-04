@@ -10,6 +10,7 @@ import ConfidenceBar from "./components/ConfidenceBar";
 import ExplanationCard from "./components/ExplanationCard";
 import KnowledgeGraph from "./components/KnowledgeGraph";
 import AttackChart from "./components/AttackChart";
+import ConfidenceChart from "./components/ConfidenceChart";
 import ThreatRecommendation from "./components/ThreatRecommendation";
 import AttackAnalytics from "./components/AttackAnalytics";
 import RecentLogs from "./components/RecentLogs";
@@ -44,7 +45,6 @@ function App() {
     ]);
   };
 
-  // Dynamic Threat Level
   let threatLevel = "Low";
 
   if (data) {
@@ -129,7 +129,7 @@ function App() {
 
           <br />
 
-          {/* Prediction */}
+          {/* Analysis Dashboard */}
 
           <DashboardGrid>
 
@@ -156,6 +156,10 @@ function App() {
               logs={logs}
             />
 
+            <ConfidenceChart
+              logs={logs}
+            />
+
           </DashboardGrid>
 
           <br />
@@ -164,9 +168,7 @@ function App() {
 
           <div
             className="info-card"
-            style={{
-              textAlign: "center",
-            }}
+            style={{ textAlign: "center" }}
           >
             <h3>Attack Description</h3>
 
