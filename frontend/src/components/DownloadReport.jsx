@@ -1,46 +1,63 @@
-import { FaFilePdf, FaFileCode } from "react-icons/fa";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 function DownloadReport({ data }) {
-  const downloadJSON = () => {
-    const blob = new Blob(
-      [JSON.stringify(data, null, 2)],
-      { type: "application/json" }
-    );
+  const generatePDF = () => {
+    if (!data) return;
 
-    const url = URL.createObjectURL(blob);
+    const doc = new jsPDF();
 
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "analysis-report.json";
-    a.click();
+    doc.setFontSize(22);
+    doc.text("AEGIS-NSAI", 14, 20);
 
-    URL.revokeObjectURL(url);
-  };
+    doc.setFontSize(12);
+    doc.text("Neuro-Symbolic Intrusion Detection Report", 14, 30);
 
-  const downloadPDF = () => {
-    window.print();
+    autoTable(doc, {
+      startY: 40,
+      head: [["Field", "Value"]],
+      body: [
+        ["Prediction", data.prediction],
+        ["Confidence", `${Number(data.confidence).toFixed(2)}%`],
+        ["Explanation", data.message],
+        [
+          "Knowledge Graph",
+          Array.isArray(data.knowledge_graph)
+            ? data.knowledge_graph.join(", ")
+            : "N/A",
+        ],
+        ["Generated", new Date().toLocaleString()],
+      ],
+    });
+
+    doc.save("AEGIS-NSAI-Report.pdf");
   };
 
   return (
-    <div className="info-card">
+    <div
+      className="info-card"
+      style={{
+        textAlign: "center",
+      }}
+    >
       <h3>Export Report</h3>
 
-      <div
+      <button
+        onClick={generatePDF}
         style={{
-          display: "flex",
-          gap: "15px",
-          flexWrap: "wrap",
           marginTop: "20px",
+          padding: "14px 30px",
+          border: "none",
+          borderRadius: "10px",
+          background: "#22c55e",
+          color: "#fff",
+          fontWeight: "700",
+          cursor: "pointer",
+          fontSize: "16px",
         }}
       >
-        <button onClick={downloadPDF}>
-          <FaFilePdf /> Download PDF
-        </button>
-
-        <button onClick={downloadJSON}>
-          <FaFileCode /> Export JSON
-        </button>
-      </div>
+        Download PDF Report
+      </button>
     </div>
   );
 }
