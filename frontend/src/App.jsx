@@ -14,6 +14,7 @@ import ConfidenceChart from "./components/ConfidenceChart";
 import ThreatRecommendation from "./components/ThreatRecommendation";
 import AttackAnalytics from "./components/AttackAnalytics";
 import RecentLogs from "./components/RecentLogs";
+import DownloadReport from "./components/DownloadReport";
 
 import {
   FaShieldAlt,
@@ -195,6 +196,36 @@ function App() {
           <br />
 
           {/* Analytics */}
+
+          {/* Recommendations */}
+
+<ThreatRecommendation
+  prediction={data.prediction}
+/>
+
+<br />
+
+{/* PDF Report */}
+
+<DownloadReport
+  data={data}
+/>
+
+<br />
+
+{/* Analytics */}
+
+<AttackAnalytics
+  logs={logs}
+/>
+
+<br />
+
+{/* Detection History */}
+
+<RecentLogs
+  logs={logs}
+/>
 
           <AttackAnalytics
             logs={logs}
