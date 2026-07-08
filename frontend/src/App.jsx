@@ -134,32 +134,10 @@ function App() {
 
           <DashboardGrid>
 
-            <PredictionCard
-              prediction={data.prediction}
-              confidence={data.confidence}
-            />
-
-            <ConfidenceBar
-              confidence={data.confidence}
-            />
-
-            <ExplanationCard
-              prediction={data.prediction}
-              confidence={data.confidence}
-              message={data.message}
-            />
-
-            <KnowledgeGraph
-              graph={data.knowledge_graph}
-            />
-
-            <AttackChart
-              logs={logs}
-            />
-
-            <ConfidenceChart
-              logs={logs}
-            />
+           <PredictionCard
+           prediction={data.prediction}
+           confidence={data.confidence}
+           />
 
           </DashboardGrid>
 
@@ -187,7 +165,7 @@ function App() {
 
           <br />
 
-          {/* Recommendations */}
+                    {/* Recommendations */}
 
           <ThreatRecommendation
             prediction={data.prediction}
@@ -195,37 +173,15 @@ function App() {
 
           <br />
 
+          {/* PDF Report */}
+
+          <DownloadReport
+            data={data}
+          />
+
+          <br />
+
           {/* Analytics */}
-
-          {/* Recommendations */}
-
-<ThreatRecommendation
-  prediction={data.prediction}
-/>
-
-<br />
-
-{/* PDF Report */}
-
-<DownloadReport
-  data={data}
-/>
-
-<br />
-
-{/* Analytics */}
-
-<AttackAnalytics
-  logs={logs}
-/>
-
-<br />
-
-{/* Detection History */}
-
-<RecentLogs
-  logs={logs}
-/>
 
           <AttackAnalytics
             logs={logs}
@@ -241,7 +197,6 @@ function App() {
 
         </>
       )}
-
     </div>
   );
 }

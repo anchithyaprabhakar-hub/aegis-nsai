@@ -43,24 +43,28 @@ function FileUpload({ onPrediction }) {
     formData.append("file", file);
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/predict", {
+      const response = await fetch("http://127.0.0.1:8001/predict", {
         method: "POST",
         body: formData,
       });
 
       if (!response.ok) {
-        throw new Error("Server Error");
+        const error = await response.text();
+        console.error(error);
+        throw new Error(error);
       }
 
       const result = await response.json();
+
+      console.log("Prediction Result:", result);
 
       onPrediction(result);
 
       setStatus("Analysis Complete");
     } catch (error) {
-      console.error(error);
+      console.error("Upload Error:", error);
       setStatus("Upload Failed");
-      alert("Upload failed.");
+      alert("Upload failed. Check the backend terminal for the error.");
     } finally {
       setLoading(false);
     }
@@ -70,16 +74,12 @@ function FileUpload({ onPrediction }) {
     switch (status) {
       case "Ready for Analysis":
         return "#38bdf8";
-
       case "Analyzing...":
         return "#facc15";
-
       case "Analysis Complete":
         return "#22c55e";
-
       case "Upload Failed":
         return "#ef4444";
-
       default:
         return "#9ca3af";
     }
@@ -89,13 +89,10 @@ function FileUpload({ onPrediction }) {
     switch (status) {
       case "Analysis Complete":
         return <FaCheckCircle />;
-
       case "Upload Failed":
         return <FaExclamationTriangle />;
-
       case "Analyzing...":
         return <FaSpinner className="spin" />;
-
       default:
         return <FaUpload />;
     }
@@ -103,7 +100,6 @@ function FileUpload({ onPrediction }) {
 
   return (
     <div className="info-card" style={{ textAlign: "center" }}>
-
       <h3>Upload Network Traffic CSV</h3>
 
       <input
@@ -191,24 +187,14 @@ function FileUpload({ onPrediction }) {
             }}
           >
             <FaFileCsv />
-
             <strong>{file.name}</strong>
           </div>
 
-          <p
-            style={{
-              marginTop: "12px",
-              color: "#9ca3af",
-            }}
-          >
+          <p style={{ marginTop: "12px", color: "#9ca3af" }}>
             Size: {(file.size / 1024).toFixed(2)} KB
           </p>
 
-          <p
-            style={{
-              color: "#9ca3af",
-            }}
-          >
+          <p style={{ color: "#9ca3af" }}>
             Type: {file.type || "text/csv"}
           </p>
 
@@ -230,7 +216,6 @@ function FileUpload({ onPrediction }) {
           </div>
         </div>
       )}
-
     </div>
   );
 }
