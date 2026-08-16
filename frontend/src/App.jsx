@@ -134,12 +134,16 @@ function App() {
 
           <DashboardGrid>
 
-           <PredictionCard
-           prediction={data.prediction}
-           confidence={data.confidence}
-           />
+  <PredictionCard
+    prediction={data.prediction}
+    confidence={data.confidence}
+  />
 
-          </DashboardGrid>
+  <ConfidenceBar
+    confidence={data.confidence}
+  />
+
+</DashboardGrid>
 
           <br />
 
