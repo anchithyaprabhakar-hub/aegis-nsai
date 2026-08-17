@@ -86,7 +86,9 @@ function App() {
       ) : (
         <>
 
-          {/* Summary Cards */}
+          {/* =====================================================
+              SUMMARY CARDS
+          ===================================================== */}
 
           <DashboardGrid>
 
@@ -130,35 +132,56 @@ function App() {
 
           <br />
 
-          {/* Analysis Dashboard */}
+          {/* =====================================================
+              ANALYSIS DASHBOARD
+          ===================================================== */}
 
           <DashboardGrid>
 
-  <PredictionCard
-    prediction={data.prediction}
-    confidence={data.confidence}
-  />
+            <PredictionCard
+              prediction={data.prediction}
+              confidence={data.confidence}
+            />
 
-  <ConfidenceBar
-    confidence={data.confidence}
-  />
+            <ConfidenceBar
+              confidence={data.confidence}
+            />
 
-  <ExplanationCard
-    prediction={data.prediction}
-    confidence={data.confidence}
-    message={data.message}
-  />
+            <ExplanationCard
+              prediction={data.prediction}
+              confidence={data.confidence}
+              message={data.message}
+            />
 
-</DashboardGrid>
+          </DashboardGrid>
 
           <br />
 
-          {/* Attack Description */}
+          {/* =====================================================
+              KNOWLEDGE GRAPH
+          ===================================================== */}
+
+          {data.knowledge_graph && (
+            <>
+              <KnowledgeGraph
+                graph={data.knowledge_graph}
+              />
+
+              <br />
+            </>
+          )}
+
+          {/* =====================================================
+              ATTACK DESCRIPTION
+          ===================================================== */}
 
           <div
             className="info-card"
-            style={{ textAlign: "center" }}
+            style={{
+              textAlign: "center",
+            }}
           >
+
             <h3>Attack Description</h3>
 
             <p
@@ -171,11 +194,14 @@ function App() {
               {attackDescriptions[data.prediction] ??
                 "Unknown network behaviour detected."}
             </p>
+
           </div>
 
           <br />
 
-                    {/* Recommendations */}
+          {/* =====================================================
+              RECOMMENDATIONS
+          ===================================================== */}
 
           <ThreatRecommendation
             prediction={data.prediction}
@@ -183,7 +209,9 @@ function App() {
 
           <br />
 
-          {/* PDF Report */}
+          {/* =====================================================
+              PDF REPORT
+          ===================================================== */}
 
           <DownloadReport
             data={data}
@@ -191,7 +219,9 @@ function App() {
 
           <br />
 
-          {/* Analytics */}
+          {/* =====================================================
+              ATTACK ANALYTICS SUMMARY
+          ===================================================== */}
 
           <AttackAnalytics
             logs={logs}
@@ -199,7 +229,29 @@ function App() {
 
           <br />
 
-          {/* Detection History */}
+          {/* =====================================================
+              ATTACK DISTRIBUTION
+          ===================================================== */}
+
+          <AttackChart
+            logs={logs}
+          />
+
+          <br />
+
+          {/* =====================================================
+              CONFIDENCE HISTORY
+          ===================================================== */}
+
+          <ConfidenceChart
+            logs={logs}
+          />
+
+          <br />
+
+          {/* =====================================================
+              DETECTION HISTORY
+          ===================================================== */}
 
           <RecentLogs
             logs={logs}
@@ -207,6 +259,7 @@ function App() {
 
         </>
       )}
+
     </div>
   );
 }
