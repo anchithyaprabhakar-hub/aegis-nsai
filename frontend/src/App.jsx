@@ -143,6 +143,12 @@ function App() {
     confidence={data.confidence}
   />
 
+  <ExplanationCard
+    prediction={data.prediction}
+    confidence={data.confidence}
+    message={data.message}
+  />
+
 </DashboardGrid>
 
           <br />
