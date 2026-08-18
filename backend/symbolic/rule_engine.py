@@ -1,30 +1,30 @@
 """
 AEGIS-NSAI Symbolic Rule Engine
 
-This module provides deterministic security rules that operate
-alongside the neural-network prediction.
+Neuro-Symbolic AI component responsible for deterministic
+network-security reasoning.
 
-The symbolic layer does NOT replace the ML model.
+The symbolic layer does NOT replace the neural network.
 
-Instead:
+Pipeline:
 
     Network Features
            |
-           +------> Neural Network
-           |              |
-           |              v
-           |        ML Prediction
-           |
-           +------> Symbolic Rules
-                          |
-                          v
-                   Rule Prediction
-                          |
-                          v
-                    Fusion Layer
-                          |
-                          v
-                  Final Prediction
+           +--------------------+
+           |                    |
+           v                    v
+    Neural Network       Symbolic Rules
+           |                    |
+           v                    v
+     ML Prediction       Symbolic Evidence
+           |                    |
+           +---------+----------+
+                     |
+                     v
+              Fusion Layer
+                     |
+                     v
+             Final Prediction
 """
 
 
@@ -45,6 +45,10 @@ ATTACK_EXPLANATIONS = {
         "Traffic characteristics indicate a possible "
         "Distributed Denial of Service attack.",
 
+    "DoS":
+        "Traffic characteristics indicate a possible "
+        "Denial of Service attack.",
+
     "DoS GoldenEye":
         "Traffic pattern is consistent with a GoldenEye "
         "Denial of Service attack.",
@@ -62,8 +66,8 @@ ATTACK_EXPLANATIONS = {
         "possible Slowloris Denial of Service attack.",
 
     "PortScan":
-        "Network behaviour indicates scanning activity "
-        "across multiple destination ports.",
+        "Network behaviour indicates possible scanning "
+        "activity.",
 
     "Bot":
         "Traffic characteristics indicate possible "
@@ -88,13 +92,25 @@ ATTACK_EXPLANATIONS = {
     "Web Attack":
         "Suspicious web application traffic was detected.",
 
+    "Web Attack - Brute Force":
+        "Repeated web authentication attempts indicate "
+        "possible brute-force behaviour.",
+
     "Web Attack � Brute Force":
         "Repeated web authentication attempts indicate "
         "possible brute-force behaviour.",
 
+    "Web Attack - Sql Injection":
+        "Traffic characteristics indicate a possible "
+        "SQL injection attack.",
+
     "Web Attack � Sql Injection":
         "Traffic characteristics indicate a possible "
         "SQL injection attack.",
+
+    "Web Attack - XSS":
+        "Traffic characteristics indicate a possible "
+        "cross-site scripting attack.",
 
     "Web Attack � XSS":
         "Traffic characteristics indicate a possible "
@@ -108,7 +124,7 @@ ATTACK_EXPLANATIONS = {
 
 def get_feature(features, name, default=0.0):
     """
-    Safely retrieve a feature value.
+    Safely retrieve a numeric network-flow feature.
 
     Supports dictionaries and pandas-like rows.
     """
@@ -116,26 +132,25 @@ def get_feature(features, name, default=0.0):
     if features is None:
         return default
 
-    # Dictionary
-
     if isinstance(features, dict):
+
         value = features.get(
             name,
             default
         )
 
-    # Pandas Series / DataFrame row
-
     else:
 
         try:
+
             value = features[name]
 
         except (
             KeyError,
             IndexError,
-            TypeError
+            TypeError,
         ):
+
             return default
 
     try:
@@ -147,30 +162,33 @@ def get_feature(features, name, default=0.0):
 
     except (
         ValueError,
-        TypeError
+        TypeError,
     ):
 
         return default
 
 
 # ============================================================
-# SYMBOLIC RULES
+# RULE: PORT SCAN
 # ============================================================
 
 def rule_port_scan(features):
     """
     Detect possible port-scanning behaviour.
 
-    Indicators:
-    - Large number of destination ports
-    - Very short flows
-    - Low packet count
-    """
+    A single flow cannot prove a port scan because CIC-IDS2017
+    flow records do not directly provide the number of distinct
+    destination ports scanned by a host.
 
-    destination_port = get_feature(
-        features,
-        "Destination Port"
-    )
+    Therefore this rule requires several supporting indicators.
+
+    Evidence:
+
+    - Very short flow
+    - Very small packet exchange
+    - TCP SYN activity
+    - No substantial response traffic
+    """
 
     flow_duration = get_feature(
         features,
@@ -187,30 +205,59 @@ def rule_port_scan(features):
         "Total Backward Packets"
     )
 
-    # CIC-IDS flow-level data does not directly expose
-    # the number of distinct scanned ports for one row.
-    #
-    # Therefore this rule uses short-flow characteristics
-    # as supporting evidence rather than claiming certainty.
+    syn_flags = get_feature(
+        features,
+        "SYN Flag Count"
+    )
 
-    if (
-        destination_port > 0
-        and flow_duration < 100000
-        and total_fwd_packets <= 4
-        and total_bwd_packets <= 4
-    ):
-        return True
+    ack_flags = get_feature(
+        features,
+        "ACK Flag Count"
+    )
 
-    return False
+    # Strong scanning-like flow characteristics.
 
+    short_flow = (
+        flow_duration <= 100000
+    )
+
+    small_exchange = (
+        total_fwd_packets <= 4
+        and total_bwd_packets <= 2
+    )
+
+    syn_activity = (
+        syn_flags >= 1
+    )
+
+    limited_response = (
+        total_bwd_packets <= 1
+        and ack_flags <= 1
+    )
+
+    evidence_count = sum([
+        short_flow,
+        small_exchange,
+        syn_activity,
+        limited_response,
+    ])
+
+    # Require multiple independent indicators.
+
+    return evidence_count >= 3
+
+
+# ============================================================
+# RULE: DDoS
+# ============================================================
 
 def rule_ddos(features):
     """
-    Detect high-volume traffic characteristics.
+    Detect strong high-volume DDoS-like characteristics.
 
-    Indicators:
-    - Very high packet count
-    - Very high packet rate
+    A single high packet-rate or byte-rate measurement is
+    insufficient. Multiple traffic-volume indicators are
+    required before the symbolic rule fires.
     """
 
     total_fwd_packets = get_feature(
@@ -228,23 +275,67 @@ def rule_ddos(features):
         "Flow Packets/s"
     )
 
+    flow_bytes_per_second = get_feature(
+        features,
+        "Flow Bytes/s"
+    )
+
+    packet_length_mean = get_feature(
+        features,
+        "Packet Length Mean"
+    )
+
     total_packets = (
         total_fwd_packets
         + total_bwd_packets
     )
 
-    if (
+    high_packet_volume = (
         total_packets > 1000
-        or flow_packets_per_second > 10000
+    )
+
+    very_high_packet_rate = (
+        flow_packets_per_second > 10000
+    )
+
+    high_byte_rate = (
+        flow_bytes_per_second > 1_000_000
+    )
+
+    traffic_volume = (
+        total_packets > 500
+    )
+
+    # Multiple indicators must support the classification.
+
+    evidence_count = sum([
+        high_packet_volume,
+        very_high_packet_rate,
+        high_byte_rate,
+        traffic_volume,
+    ])
+
+    # Additional consistency check.
+
+    if (
+        packet_length_mean <= 0
+        and evidence_count < 3
     ):
-        return True
+        return False
 
-    return False
+    return evidence_count >= 2
 
+
+# ============================================================
+# RULE: GENERAL DoS
+# ============================================================
 
 def rule_dos(features):
     """
-    Detect high-volume DoS characteristics.
+    Detect high-volume Denial of Service characteristics.
+
+    This rule is intentionally weaker than the DDoS rule but
+    still requires multiple supporting indicators.
     """
 
     total_fwd_packets = get_feature(
@@ -262,26 +353,55 @@ def rule_dos(features):
         "Flow Bytes/s"
     )
 
+    flow_packets_per_second = get_feature(
+        features,
+        "Flow Packets/s"
+    )
+
     total_packets = (
         total_fwd_packets
         + total_bwd_packets
     )
 
-    if (
+    high_packet_volume = (
         total_packets > 500
-        or flow_bytes_per_second > 1_000_000
-    ):
-        return True
+    )
 
-    return False
+    high_byte_rate = (
+        flow_bytes_per_second > 1_000_000
+    )
 
+    high_packet_rate = (
+        flow_packets_per_second > 5000
+    )
+
+    evidence_count = sum([
+        high_packet_volume,
+        high_byte_rate,
+        high_packet_rate,
+    ])
+
+    return evidence_count >= 2
+
+
+# ============================================================
+# RULE: BRUTE FORCE
+# ============================================================
 
 def rule_bruteforce(features):
     """
-    Detect repeated authentication-like traffic.
+    Detect authentication-oriented traffic.
 
-    This is a supporting symbolic rule and should not be
-    interpreted as proof of brute-force activity.
+    This is supporting evidence only.
+
+    Common CIC-IDS2017 authentication ports:
+
+        21 -> FTP
+        22 -> SSH
+
+    Multiple packets are required so that an ordinary
+    single connection is not immediately classified
+    as brute-force behaviour.
     """
 
     destination_port = get_feature(
@@ -299,31 +419,52 @@ def rule_bruteforce(features):
         "Total Backward Packets"
     )
 
-    # Common SSH / FTP ports
+    flow_duration = get_feature(
+        features,
+        "Flow Duration"
+    )
 
     authentication_port = (
         destination_port in {
             21,
-            22
+            22,
         }
     )
 
-    if (
-        authentication_port
-        and total_fwd_packets > 5
-        and total_bwd_packets > 0
-    ):
-        return True
+    repeated_forward_traffic = (
+        total_fwd_packets >= 8
+    )
 
-    return False
+    response_traffic = (
+        total_bwd_packets >= 1
+    )
 
+    active_flow = (
+        flow_duration > 0
+    )
+
+    evidence_count = sum([
+        authentication_port,
+        repeated_forward_traffic,
+        response_traffic,
+        active_flow,
+    ])
+
+    return evidence_count >= 4
+
+
+# ============================================================
+# RULE: WEB ATTACK
+# ============================================================
 
 def rule_web_attack(features):
     """
-    Detect suspicious web traffic.
+    Detect suspicious web-application traffic.
 
-    HTTP/HTTPS destination ports combined with unusual
-    packet behaviour are treated as supporting evidence.
+    This rule identifies supporting evidence only.
+
+    Ports commonly associated with HTTP traffic are checked
+    together with sustained forward traffic.
     """
 
     destination_port = get_feature(
@@ -341,20 +482,259 @@ def rule_web_attack(features):
         "Total Fwd Packets"
     )
 
-    if destination_port in {
-        80,
-        443,
-        8080,
-        8000
-    }:
+    total_bwd_packets = get_feature(
+        features,
+        "Total Backward Packets"
+    )
 
-        if (
-            total_fwd_packets > 20
-            and flow_duration > 0
-        ):
-            return True
+    web_port = (
+        destination_port in {
+            80,
+            443,
+            8080,
+            8000,
+        }
+    )
 
-    return False
+    sustained_forward_traffic = (
+        total_fwd_packets > 20
+    )
+
+    response_traffic = (
+        total_bwd_packets > 0
+    )
+
+    active_flow = (
+        flow_duration > 0
+    )
+
+    evidence_count = sum([
+        web_port,
+        sustained_forward_traffic,
+        response_traffic,
+        active_flow,
+    ])
+
+    return evidence_count >= 4
+
+
+# ============================================================
+# SYMBOLIC EVIDENCE SCORE
+# ============================================================
+
+def _rule_scores(features):
+    """
+    Calculate symbolic evidence scores.
+
+    Scores are NOT probabilities.
+
+    They represent how strongly the observed flow matches
+    the deterministic conditions of each symbolic rule.
+    """
+
+    scores = {}
+
+    # --------------------------------------------------------
+    # DDoS
+    # --------------------------------------------------------
+
+    ddos_indicators = [
+
+        (
+            get_feature(
+                features,
+                "Total Fwd Packets"
+            )
+            +
+            get_feature(
+                features,
+                "Total Backward Packets"
+            )
+        ) > 1000,
+
+        get_feature(
+            features,
+            "Flow Packets/s"
+        ) > 10000,
+
+        get_feature(
+            features,
+            "Flow Bytes/s"
+        ) > 1_000_000,
+
+    ]
+
+    scores["DDoS"] = (
+        sum(ddos_indicators)
+        / len(ddos_indicators)
+        * 100
+    )
+
+
+    # --------------------------------------------------------
+    # DoS
+    # --------------------------------------------------------
+
+    dos_indicators = [
+
+        (
+            get_feature(
+                features,
+                "Total Fwd Packets"
+            )
+            +
+            get_feature(
+                features,
+                "Total Backward Packets"
+            )
+        ) > 500,
+
+        get_feature(
+            features,
+            "Flow Bytes/s"
+        ) > 1_000_000,
+
+        get_feature(
+            features,
+            "Flow Packets/s"
+        ) > 5000,
+
+    ]
+
+    scores["DoS"] = (
+        sum(dos_indicators)
+        / len(dos_indicators)
+        * 100
+    )
+
+
+    # --------------------------------------------------------
+    # PortScan
+    # --------------------------------------------------------
+
+    port_scan_indicators = [
+
+        get_feature(
+            features,
+            "Flow Duration"
+        ) <= 100000,
+
+        (
+            get_feature(
+                features,
+                "Total Fwd Packets"
+            ) <= 4
+            and
+            get_feature(
+                features,
+                "Total Backward Packets"
+            ) <= 2
+        ),
+
+        get_feature(
+            features,
+            "SYN Flag Count"
+        ) >= 1,
+
+        (
+            get_feature(
+                features,
+                "Total Backward Packets"
+            ) <= 1
+            and
+            get_feature(
+                features,
+                "ACK Flag Count"
+            ) <= 1
+        ),
+    ]
+
+    scores["PortScan"] = (
+        sum(port_scan_indicators)
+        / len(port_scan_indicators)
+        * 100
+    )
+
+
+    # --------------------------------------------------------
+    # Brute Force
+    # --------------------------------------------------------
+
+    bruteforce_indicators = [
+
+        get_feature(
+            features,
+            "Destination Port"
+        ) in {
+            21,
+            22,
+        },
+
+        get_feature(
+            features,
+            "Total Fwd Packets"
+        ) >= 8,
+
+        get_feature(
+            features,
+            "Total Backward Packets"
+        ) >= 1,
+
+        get_feature(
+            features,
+            "Flow Duration"
+        ) > 0,
+
+    ]
+
+    scores["BruteForce"] = (
+        sum(bruteforce_indicators)
+        / len(bruteforce_indicators)
+        * 100
+    )
+
+
+    # --------------------------------------------------------
+    # Web Attack
+    # --------------------------------------------------------
+
+    web_indicators = [
+
+        get_feature(
+            features,
+            "Destination Port"
+        ) in {
+            80,
+            443,
+            8080,
+            8000,
+        },
+
+        get_feature(
+            features,
+            "Total Fwd Packets"
+        ) > 20,
+
+        get_feature(
+            features,
+            "Total Backward Packets"
+        ) > 0,
+
+        get_feature(
+            features,
+            "Flow Duration"
+        ) > 0,
+
+    ]
+
+    scores["WebAttack"] = (
+        sum(web_indicators)
+        / len(web_indicators)
+        * 100
+    )
+
+
+    return scores
 
 
 # ============================================================
@@ -363,25 +743,54 @@ def rule_web_attack(features):
 
 def detect_attack_rules(features):
     """
-    Execute symbolic security rules.
+    Execute symbolic security reasoning.
+
+    The symbolic engine evaluates several independent
+    evidence sources before selecting a classification.
+
+    Priority is used only when multiple rules have comparable
+    evidence.
 
     Returns:
-        A symbolic attack classification.
-
-    Priority:
 
         DDoS
         DoS
         PortScan
-        Brute Force
+        SSH-Patator
+        FTP-Patator
         Web Attack
         Normal
-
-    The symbolic result is later combined with the
-    neural-network prediction by the fusion layer.
     """
 
     if features is None:
+        return "Normal"
+
+
+    scores = _rule_scores(
+        features
+    )
+
+
+    # --------------------------------------------------------
+    # Determine strongest symbolic evidence
+    # --------------------------------------------------------
+
+    best_attack = max(
+        scores,
+        key=scores.get
+    )
+
+    best_score = scores[
+        best_attack
+    ]
+
+
+    # --------------------------------------------------------
+    # Require meaningful symbolic evidence
+    # --------------------------------------------------------
+
+    if best_score < 75:
+
         return "Normal"
 
 
@@ -389,7 +798,10 @@ def detect_attack_rules(features):
     # DDoS
     # --------------------------------------------------------
 
-    if rule_ddos(features):
+    if (
+        best_attack == "DDoS"
+        and rule_ddos(features)
+    ):
 
         return "DDoS"
 
@@ -398,16 +810,22 @@ def detect_attack_rules(features):
     # DoS
     # --------------------------------------------------------
 
-    if rule_dos(features):
+    if (
+        best_attack == "DoS"
+        and rule_dos(features)
+    ):
 
         return "DoS"
 
 
     # --------------------------------------------------------
-    # Port Scan
+    # PortScan
     # --------------------------------------------------------
 
-    if rule_port_scan(features):
+    if (
+        best_attack == "PortScan"
+        and rule_port_scan(features)
+    ):
 
         return "PortScan"
 
@@ -416,7 +834,10 @@ def detect_attack_rules(features):
     # Brute Force
     # --------------------------------------------------------
 
-    if rule_bruteforce(features):
+    if (
+        best_attack == "BruteForce"
+        and rule_bruteforce(features)
+    ):
 
         destination_port = get_feature(
             features,
@@ -436,7 +857,10 @@ def detect_attack_rules(features):
     # Web Attack
     # --------------------------------------------------------
 
-    if rule_web_attack(features):
+    if (
+        best_attack == "WebAttack"
+        and rule_web_attack(features)
+    ):
 
         return "Web Attack"
 
@@ -454,21 +878,21 @@ def detect_attack_rules(features):
 
 def explain_prediction(prediction):
     """
-    Return a human-readable explanation for an attack class.
+    Return a human-readable explanation for a symbolic
+    classification.
     """
 
     if prediction is None:
 
         return (
-            "No prediction was generated."
+            "No symbolic prediction was generated."
         )
+
 
     prediction = str(
         prediction
     ).strip()
 
-
-    # Exact match
 
     if prediction in ATTACK_EXPLANATIONS:
 
@@ -476,8 +900,6 @@ def explain_prediction(prediction):
             prediction
         ]
 
-
-    # Generic Web Attack handling
 
     if prediction.startswith(
         "Web Attack"
@@ -490,8 +912,9 @@ def explain_prediction(prediction):
 
 
     return (
-        "The model detected a traffic pattern "
-        "associated with this attack class."
+        "The symbolic engine detected traffic "
+        "characteristics associated with this "
+        "attack class."
     )
 
 
@@ -503,32 +926,38 @@ def get_rule_details(features):
     """
     Return which symbolic rules fired.
 
-    This is useful for the explainability layer and
-    dashboard.
+    These values represent deterministic evidence and are
+    useful for explainability.
     """
 
     details = {
 
-        "ddos_rule": rule_ddos(
-            features
-        ),
+        "ddos_rule":
+            rule_ddos(
+                features
+            ),
 
-        "dos_rule": rule_dos(
-            features
-        ),
+        "dos_rule":
+            rule_dos(
+                features
+            ),
 
-        "port_scan_rule": rule_port_scan(
-            features
-        ),
+        "port_scan_rule":
+            rule_port_scan(
+                features
+            ),
 
-        "bruteforce_rule": rule_bruteforce(
-            features
-        ),
+        "bruteforce_rule":
+            rule_bruteforce(
+                features
+            ),
 
-        "web_attack_rule": rule_web_attack(
-            features
-        ),
+        "web_attack_rule":
+            rule_web_attack(
+                features
+            ),
     }
+
 
     return details
 
@@ -539,37 +968,76 @@ def get_rule_details(features):
 
 def symbolic_confidence(features):
     """
-    Estimate symbolic evidence strength.
+    Return symbolic evidence strength.
 
-    This is NOT statistical probability.
+    IMPORTANT:
 
-    It represents the proportion of symbolic rules
-    that fired.
+    This is NOT a statistical probability.
+
+    It represents the percentage of symbolic indicators
+    supporting the selected symbolic classification.
     """
 
-    details = get_rule_details(
-        features
-    )
-
-    fired_rules = sum(
-        1
-        for value
-        in details.values()
-        if value
-    )
-
-    total_rules = len(
-        details
-    )
-
-    if total_rules == 0:
+    if features is None:
 
         return 0.0
 
+
+    prediction = detect_attack_rules(
+        features
+    )
+
+
+    if prediction == "Normal":
+
+        return 0.0
+
+
+    scores = _rule_scores(
+        features
+    )
+
+
+    score_mapping = {
+
+        "DDoS":
+            "DDoS",
+
+        "DoS":
+            "DoS",
+
+        "PortScan":
+            "PortScan",
+
+        "SSH-Patator":
+            "BruteForce",
+
+        "FTP-Patator":
+            "BruteForce",
+
+        "Web Attack":
+            "WebAttack",
+
+    }
+
+
+    score_key = score_mapping.get(
+        prediction
+    )
+
+
+    if score_key is None:
+
+        return 0.0
+
+
     return round(
-        fired_rules
-        / total_rules
-        * 100,
+        float(
+            scores.get(
+                score_key,
+                0.0
+            )
+        ),
         2
     )
 
@@ -580,12 +1048,18 @@ def symbolic_confidence(features):
 
 if __name__ == "__main__":
 
-    print("=" * 60)
-    print("AEGIS-NSAI SYMBOLIC RULE ENGINE TEST")
-    print("=" * 60)
+    print("=" * 70)
+
+    print(
+        "AEGIS-NSAI SYMBOLIC RULE ENGINE TEST"
+    )
+
+    print("=" * 70)
 
 
-    # Normal-like sample
+    # --------------------------------------------------------
+    # Normal sample
+    # --------------------------------------------------------
 
     normal_sample = {
 
@@ -600,10 +1074,17 @@ if __name__ == "__main__":
         "Flow Packets/s": 20,
 
         "Flow Bytes/s": 10000,
+
+        "SYN Flag Count": 0,
+
+        "ACK Flag Count": 5,
+
     }
 
 
-    # High-volume sample
+    # --------------------------------------------------------
+    # DDoS sample
+    # --------------------------------------------------------
 
     ddos_sample = {
 
@@ -618,10 +1099,19 @@ if __name__ == "__main__":
         "Flow Packets/s": 20000,
 
         "Flow Bytes/s": 5000000,
+
+        "Packet Length Mean": 500,
+
+        "SYN Flag Count": 1,
+
+        "ACK Flag Count": 1,
+
     }
 
 
-    # Port scan-like sample
+    # --------------------------------------------------------
+    # Port scan sample
+    # --------------------------------------------------------
 
     port_scan_sample = {
 
@@ -636,6 +1126,11 @@ if __name__ == "__main__":
         "Flow Packets/s": 3,
 
         "Flow Bytes/s": 100,
+
+        "SYN Flag Count": 1,
+
+        "ACK Flag Count": 0,
+
     }
 
 
@@ -675,17 +1170,24 @@ if __name__ == "__main__":
         )
 
         print(
-            f"Symbolic prediction : {prediction}"
+            f"Symbolic prediction : "
+            f"{prediction}"
         )
 
         print(
-            f"Symbolic evidence   : {confidence}%"
+            f"Symbolic evidence   : "
+            f"{confidence}%"
         )
 
         print(
-            f"Explanation         : {explanation}"
+            f"Explanation         : "
+            f"{explanation}"
         )
 
         print(
-            f"Rules               : {details}"
+            f"Rules               : "
+            f"{details}"
         )
+
+    print()
+    print("=" * 70)

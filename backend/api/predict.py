@@ -1,4 +1,3 @@
-import sys
 from pathlib import Path
 
 import joblib
@@ -8,7 +7,34 @@ import torch
 
 
 # ============================================================
-# PATH CONFIGURATION
+# AEGIS-NSAI
+# Neuro-Symbolic AI Intrusion Detection System
+#
+# Pipeline:
+#
+# CSV
+#   ↓
+# Data Validation / Cleaning
+#   ↓
+# Feature Alignment
+#   ↓
+# Scaler
+#   ↓
+# Neural Network
+#   ↓
+# Symbolic Rule Engine
+#   ↓
+# Neuro-Symbolic Fusion
+#   ↓
+# Explanation
+#   ↓
+# Knowledge Graph
+#
+# ============================================================
+
+
+# ============================================================
+# PROJECT PATHS
 # ============================================================
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -22,40 +48,61 @@ FEATURES_PATH = ML_DIR / "feature_names.joblib"
 
 
 # ============================================================
-# IMPORT MODEL
+# IMPORT TRAINED MODEL
 # ============================================================
 
-sys.path.append(str(ML_DIR))
+from backend.ml.train import IntrusionDetector
 
-from train import IntrusionDetector
+
+# ============================================================
+# IMPORT AEGIS-NSAI MODULES
+# ============================================================
+
+from backend.explainability.explainer import (
+    generate_explanation,
+)
+
+from backend.knowledge_graph.graph_builder import (
+    get_attack_context,
+)
+
+from backend.symbolic.fusion import (
+    fuse_predictions,
+)
+
+from backend.symbolic.rule_engine import (
+    detect_attack_rules,
+    get_rule_details,
+    symbolic_confidence,
+    explain_prediction,
+)
+
+
+# ============================================================
+# VERIFY REQUIRED MODEL ARTIFACTS
+# ============================================================
+
+REQUIRED_FILES = {
+    "Model": MODEL_PATH,
+    "Scaler": SCALER_PATH,
+    "Label encoder": ENCODER_PATH,
+    "Feature names": FEATURES_PATH,
+}
+
+
+for artifact_name, artifact_path in REQUIRED_FILES.items():
+
+    if not artifact_path.exists():
+
+        raise FileNotFoundError(
+            f"{artifact_name} file not found:\n"
+            f"{artifact_path}"
+        )
 
 
 # ============================================================
 # LOAD TRAINING ARTIFACTS
 # ============================================================
-
-if not MODEL_PATH.exists():
-    raise FileNotFoundError(
-        f"Model not found:\n{MODEL_PATH}"
-    )
-
-if not SCALER_PATH.exists():
-    raise FileNotFoundError(
-        f"Scaler not found:\n{SCALER_PATH}"
-    )
-
-if not ENCODER_PATH.exists():
-    raise FileNotFoundError(
-        f"Label encoder not found:\n{ENCODER_PATH}"
-    )
-
-if not FEATURES_PATH.exists():
-    raise FileNotFoundError(
-        f"Feature names not found:\n{FEATURES_PATH}"
-    )
-
-
-# Load preprocessing artifacts
 
 scaler = joblib.load(
     SCALER_PATH
@@ -71,14 +118,87 @@ feature_names = joblib.load(
 
 
 # ============================================================
+# VALIDATE FEATURE ARTIFACT
+# ============================================================
+
+if feature_names is None:
+
+    raise ValueError(
+        "feature_names.joblib returned None."
+    )
+
+
+feature_names = [
+    str(feature).strip()
+    for feature in feature_names
+]
+
+
+if len(feature_names) == 0:
+
+    raise ValueError(
+        "No feature names were found."
+    )
+
+
+if len(set(feature_names)) != len(feature_names):
+
+    raise ValueError(
+        "feature_names.joblib contains duplicate "
+        "feature names."
+    )
+
+
+# ============================================================
 # MODEL CONFIGURATION
 # ============================================================
 
-input_size = len(feature_names)
+INPUT_SIZE = len(
+    feature_names
+)
 
-num_classes = len(
+NUM_CLASSES = len(
     label_encoder.classes_
 )
+
+
+# ============================================================
+# VALIDATE SCALER
+# ============================================================
+
+if hasattr(scaler, "n_features_in_"):
+
+    scaler_features = int(
+        scaler.n_features_in_
+    )
+
+    if scaler_features != INPUT_SIZE:
+
+        raise ValueError(
+            "Scaler/model feature mismatch.\n"
+            f"Feature names: {INPUT_SIZE}\n"
+            f"Scaler expects: {scaler_features}"
+        )
+
+
+# ============================================================
+# OPTIONAL SCALER FEATURE-NAME VALIDATION
+# ============================================================
+
+if hasattr(scaler, "feature_names_in_"):
+
+    scaler_feature_names = [
+        str(feature).strip()
+        for feature in scaler.feature_names_in_
+    ]
+
+    if scaler_feature_names != feature_names:
+
+        raise ValueError(
+            "Scaler feature names do not exactly match "
+            "feature_names.joblib.\n\n"
+            "This can cause incorrect feature scaling."
+        )
 
 
 # ============================================================
@@ -86,348 +206,841 @@ num_classes = len(
 # ============================================================
 
 model = IntrusionDetector(
-    input_size=input_size,
-    num_classes=num_classes
+    input_size=INPUT_SIZE,
+    num_classes=NUM_CLASSES,
 )
 
 
 # ============================================================
-# LOAD TRAINED WEIGHTS
+# LOAD TRAINED MODEL
 # ============================================================
 
 checkpoint = torch.load(
     MODEL_PATH,
-    map_location=torch.device("cpu"),
-    weights_only=True
+    map_location="cpu",
+    weights_only=True,
 )
 
 
-# Support both state_dict and checkpoint formats
+# ------------------------------------------------------------
+# Support common checkpoint formats
+# ------------------------------------------------------------
 
 if isinstance(checkpoint, dict):
 
     if "model_state_dict" in checkpoint:
 
-        model.load_state_dict(
-            checkpoint["model_state_dict"]
-        )
+        state_dict = checkpoint[
+            "model_state_dict"
+        ]
+
+    elif "state_dict" in checkpoint:
+
+        state_dict = checkpoint[
+            "state_dict"
+        ]
 
     else:
 
-        model.load_state_dict(
-            checkpoint
-
-        )
+        state_dict = checkpoint
 
 else:
 
-    model.load_state_dict(
-        checkpoint
-    )
+    state_dict = checkpoint
 
+
+# ------------------------------------------------------------
+# Load weights
+# ------------------------------------------------------------
+
+model.load_state_dict(
+    state_dict
+)
+
+
+# ============================================================
+# EVALUATION MODE
+# ============================================================
 
 model.eval()
 
 
 # ============================================================
-# CLASS NAMES
+# CLASS MAPPING
 # ============================================================
 
 CLASS_NAMES = {
-    index: str(name)
+    index: str(name).strip()
     for index, name
-    in enumerate(label_encoder.classes_)
+    in enumerate(
+        label_encoder.classes_
+    )
 }
 
 
 # ============================================================
-# NORMALIZE ATTACK NAME
+# ATTACK NAME NORMALIZATION
 # ============================================================
 
 def normalize_attack_name(name):
+    """
+    Convert dataset/model attack labels into the
+    canonical names used by AEGIS-NSAI.
+    """
 
     if name is None:
+
         return "Unknown"
+
 
     name = str(name).strip()
 
-    if name == "BENIGN":
+
+    if not name:
+
+        return "Unknown"
+
+
+    # --------------------------------------------------------
+    # BENIGN
+    # --------------------------------------------------------
+
+    if name.upper() == "BENIGN":
+
         return "Normal"
 
-    return name
+
+    # --------------------------------------------------------
+    # Handle common encoding/mojibake variants
+    # --------------------------------------------------------
+
+    replacements = {
+
+        "Web Attack � Brute Force":
+            "Web Attack - Brute Force",
+
+        "Web Attack � Sql Injection":
+            "Web Attack - Sql Injection",
+
+        "Web Attack � XSS":
+            "Web Attack - XSS",
+
+        "Web Attack – Brute Force":
+            "Web Attack - Brute Force",
+
+        "Web Attack – Sql Injection":
+            "Web Attack - Sql Injection",
+
+        "Web Attack – XSS":
+            "Web Attack - XSS",
+
+        "Web Attack — Brute Force":
+            "Web Attack - Brute Force",
+
+        "Web Attack — Sql Injection":
+            "Web Attack - Sql Injection",
+
+        "Web Attack — XSS":
+            "Web Attack - XSS",
+    }
+
+
+    return replacements.get(
+        name,
+        name
+    )
 
 
 # ============================================================
-# PREPARE INPUT
+# NORMALIZE CLASS NAMES
 # ============================================================
 
-def prepare_input(sample):
+NORMALIZED_CLASS_NAMES = {
+    index: normalize_attack_name(name)
+    for index, name
+    in CLASS_NAMES.items()
+}
+
+
+# ============================================================
+# PREPARE DATAFRAME
+# ============================================================
+
+def prepare_dataframe(df):
     """
-    Convert incoming prediction data into the exact
-    78-feature format used during model training.
+    Validate and prepare an uploaded network-flow dataframe.
 
-    Supported input:
-
-    1. Dictionary
-    2. Pandas DataFrame
-    3. List / tuple / numpy array
+    The dataframe is transformed to exactly the same
+    78-feature structure used during model training.
     """
 
     # --------------------------------------------------------
-    # Dictionary
+    # Validate input existence
     # --------------------------------------------------------
 
-    if isinstance(sample, dict):
+    if df is None:
 
-        df = pd.DataFrame(
-            [sample]
+        raise ValueError(
+            "No dataset was provided."
         )
 
-    # --------------------------------------------------------
-    # DataFrame
-    # --------------------------------------------------------
-
-    elif isinstance(sample, pd.DataFrame):
-
-        df = sample.copy()
 
     # --------------------------------------------------------
-    # Array / List
+    # Validate dataframe type
     # --------------------------------------------------------
 
-    else:
+    if not isinstance(
+        df,
+        pd.DataFrame
+    ):
 
-        array = np.asarray(
-            sample,
-            dtype=np.float64
+        raise TypeError(
+            "Input must be a pandas DataFrame."
         )
 
-        if array.ndim == 1:
 
-            array = array.reshape(
-                1,
-                -1
+    # --------------------------------------------------------
+    # Validate dataframe is not empty
+    # --------------------------------------------------------
+
+    if df.empty:
+
+        raise ValueError(
+            "Uploaded CSV is empty."
+        )
+
+
+    # --------------------------------------------------------
+    # Work on a copy
+    # --------------------------------------------------------
+
+    df = df.copy()
+
+
+    # ========================================================
+    # CLEAN COLUMN NAMES
+    # ========================================================
+
+    df.columns = (
+        df.columns
+        .astype(str)
+        .str.strip()
+    )
+
+
+    # ========================================================
+    # REMOVE COMMON LABEL COLUMNS
+    # ========================================================
+
+    label_columns = []
+
+    for column in df.columns:
+
+        normalized_column = (
+            str(column)
+            .strip()
+            .lower()
+        )
+
+        if normalized_column in {
+            "label",
+            "target",
+            "class",
+        }:
+
+            label_columns.append(
+                column
             )
 
-        df = pd.DataFrame(
-            array
+
+    if label_columns:
+
+        df = df.drop(
+            columns=label_columns
         )
 
 
-    # --------------------------------------------------------
-    # Named feature input
-    # --------------------------------------------------------
+    # ========================================================
+    # CHECK REQUIRED FEATURES
+    # ========================================================
 
-    if len(df.columns) > 0:
-
-        # If all trained feature names exist,
-        # preserve the exact training order.
-
-        if all(
-            feature in df.columns
-            for feature in feature_names
-        ):
-
-            df = df[
-                feature_names
-            ]
-
-        # Otherwise, if dataframe has the expected
-        # number of columns, use positional ordering.
-
-        elif df.shape[1] == input_size:
-
-            df = df.iloc[
-                :,
-                :input_size
-            ]
-
-            df.columns = feature_names
-
-        else:
-
-            missing = [
-                feature
-                for feature in feature_names
-                if feature not in df.columns
-            ]
-
-            raise ValueError(
-                "Input does not contain the required "
-                f"{input_size} features.\n"
-                f"Missing features: {missing[:10]}"
-            )
+    missing_features = [
+        feature
+        for feature in feature_names
+        if feature not in df.columns
+    ]
 
 
-    # --------------------------------------------------------
-    # Convert everything to numeric
-    # --------------------------------------------------------
+    if missing_features:
+
+        preview = missing_features[:15]
+
+
+        raise ValueError(
+            "Uploaded CSV is missing required "
+            "model features.\n\n"
+            f"Expected features: {INPUT_SIZE}\n"
+            f"Missing features: {len(missing_features)}\n\n"
+            f"Examples:\n{preview}"
+        )
+
+
+    # ========================================================
+    # KEEP ONLY TRAINING FEATURES
+    # ========================================================
+
+    df = df[
+        feature_names
+    ].copy()
+
+
+    # ========================================================
+    # CONVERT ALL FEATURES TO NUMERIC
+    # ========================================================
 
     for column in feature_names:
 
         df[column] = pd.to_numeric(
             df[column],
-            errors="coerce"
+            errors="coerce",
         )
 
 
-    # --------------------------------------------------------
-    # Handle invalid values
-    # --------------------------------------------------------
+    # ========================================================
+    # REPLACE INFINITY VALUES
+    # ========================================================
 
     df.replace(
         [np.inf, -np.inf],
         np.nan,
-        inplace=True
+        inplace=True,
     )
 
-    if df[feature_names].isnull().any().any():
 
-        raise ValueError(
-            "Input contains missing or non-numeric "
-            "feature values."
+    # ========================================================
+    # DETECT INVALID VALUES
+    # ========================================================
+
+    invalid_rows = int(
+        df.isnull()
+        .any(axis=1)
+        .sum()
+    )
+
+
+    # ========================================================
+    # REMOVE INVALID ROWS
+    # ========================================================
+
+    if invalid_rows > 0:
+
+        print(
+            f"[AEGIS-NSAI] Removing "
+            f"{invalid_rows:,} invalid row(s)."
+        )
+
+        df = (
+            df
+            .dropna()
+            .reset_index(drop=True)
         )
 
 
-    # --------------------------------------------------------
-    # Convert to numpy
-    # --------------------------------------------------------
+    # ========================================================
+    # ENSURE VALID ROWS REMAIN
+    # ========================================================
 
-    values = df[
-        feature_names
-    ].values.astype(
-        np.float64
+    if df.empty:
+
+        raise ValueError(
+            "No valid network-flow rows remain "
+            "after data cleaning."
+        )
+
+
+    # ========================================================
+    # FINAL NUMERIC VALIDATION
+    # ========================================================
+
+    values = df.to_numpy(
+        dtype=np.float64
     )
 
 
-    # --------------------------------------------------------
-    # Apply SAME scaler used during training
-    # --------------------------------------------------------
-
-    scaled = scaler.transform(
+    if not np.isfinite(
         values
+    ).all():
+
+        raise ValueError(
+            "Uploaded CSV contains non-finite "
+            "numeric values after cleaning."
+        )
+
+
+    # ========================================================
+    # FINAL FEATURE COUNT VALIDATION
+    # ========================================================
+
+    if df.shape[1] != INPUT_SIZE:
+
+        raise ValueError(
+            "Feature count mismatch after preprocessing.\n"
+            f"Expected: {INPUT_SIZE}\n"
+            f"Received: {df.shape[1]}"
+        )
+
+
+    return df
+
+
+# ============================================================
+# MACHINE LEARNING PREDICTION
+# ============================================================
+
+def run_ml_prediction(df):
+    """
+    Run the neural-network component of AEGIS-NSAI.
+    """
+
+    # --------------------------------------------------------
+    # Prepare data
+    # --------------------------------------------------------
+
+    clean_df = prepare_dataframe(
+        df
     )
+
+
+    # --------------------------------------------------------
+    # Apply EXACT training scaler
+    #
+    # IMPORTANT:
+    # The scaler was fitted using feature names.
+    # Passing the DataFrame preserves those names and
+    # avoids the sklearn feature-name warning.
+    # --------------------------------------------------------
+
+    X_scaled = scaler.transform(
+        clean_df
+    )
+
+
+    # --------------------------------------------------------
+    # Final scaler validation
+    # --------------------------------------------------------
+
+    if not np.isfinite(
+        X_scaled
+    ).all():
+
+        raise ValueError(
+            "Scaler produced non-finite values."
+        )
 
 
     # --------------------------------------------------------
     # Convert to PyTorch tensor
     # --------------------------------------------------------
 
-    tensor = torch.tensor(
-        scaled,
-        dtype=torch.float32
+    X_tensor = torch.tensor(
+        X_scaled,
+        dtype=torch.float32,
     )
 
-    return tensor, df
 
-
-# ============================================================
-# ML PREDICTION
-# ============================================================
-
-def predict_ml(sample):
-
-    tensor, raw_df = prepare_input(
-        sample
-    )
+    # ========================================================
+    # NEURAL NETWORK INFERENCE
+    # ========================================================
 
     with torch.no_grad():
 
-        outputs = model(
-            tensor
+        output = model(
+            X_tensor
         )
 
+
         probabilities = torch.softmax(
-            outputs,
-            dim=1
+            output,
+            dim=1,
         )
+
 
         confidence_values, predictions = (
             torch.max(
                 probabilities,
-                dim=1
+                dim=1,
             )
         )
 
 
-    results = []
+    # ========================================================
+    # FIRST FLOW
+    # ========================================================
 
-    for index in range(
-        len(predictions)
-    ):
-
-        class_index = int(
-            predictions[index].item()
-        )
-
-        confidence = float(
-            confidence_values[index].item()
-        ) * 100
-
-
-        attack_name = CLASS_NAMES.get(
-            class_index,
-            "Unknown"
-        )
-
-
-        results.append(
-            {
-                "prediction": normalize_attack_name(
-                    attack_name
-                ),
-                "confidence": round(
-                    confidence,
-                    2
-                ),
-                "class_index": class_index
-            }
-        )
-
-
-    return results
-
-
-# ============================================================
-# PUBLIC PREDICTION FUNCTION
-# ============================================================
-
-def predict_attack(sample):
-
-    """
-    Main prediction function used by FastAPI.
-
-    Returns a single prediction for a single network flow.
-    """
-
-    results = predict_ml(
-        sample
+    class_index = int(
+        predictions[0].item()
     )
 
-    result = results[0]
+
+    confidence = float(
+        confidence_values[0].item()
+    )
+
+
+    attack_name = normalize_attack_name(
+        NORMALIZED_CLASS_NAMES.get(
+            class_index,
+            "Unknown",
+        )
+    )
+
+
+    # ========================================================
+    # RETURN ML RESULT
+    # ========================================================
 
     return {
-        "prediction": result["prediction"],
-        "confidence": result["confidence"],
-        "class_index": result["class_index"]
+
+        "prediction":
+            attack_name,
+
+        "confidence":
+            confidence,
+
+        "class_index":
+            class_index,
+
+        "probabilities":
+            probabilities[0].tolist(),
+
+        "clean_df":
+            clean_df,
+
+        "rows_processed":
+            int(len(clean_df)),
     }
 
 
 # ============================================================
-# BATCH PREDICTION
+# COMPLETE AEGIS-NSAI PIPELINE
 # ============================================================
 
-def predict_batch(samples):
-
+def predict_attack(df):
     """
-    Predict multiple network flows.
+    Execute the complete Neuro-Symbolic AI pipeline.
+
+    Neural prediction
+          +
+    Symbolic reasoning
+          ↓
+    Neuro-symbolic fusion
+          ↓
+    Explanation
+          ↓
+    Knowledge graph context
     """
 
-    results = predict_ml(
-        samples
+    # ========================================================
+    # 1. NEURAL NETWORK
+    # ========================================================
+
+    ml_result = run_ml_prediction(
+        df
     )
 
-    return results
+
+    ml_prediction = ml_result[
+        "prediction"
+    ]
+
+
+    ml_confidence = ml_result[
+        "confidence"
+    ]
+
+
+    clean_df = ml_result[
+        "clean_df"
+    ]
+
+
+    # ========================================================
+    # 2. SYMBOLIC REASONING
+    # ========================================================
+
+    # --------------------------------------------------------
+    # AEGIS-NSAI currently performs symbolic reasoning
+    # using the first uploaded network flow.
+    # --------------------------------------------------------
+
+    first_row = (
+        clean_df
+        .iloc[0]
+        .to_dict()
+    )
+
+
+    # --------------------------------------------------------
+    # Rule engine prediction
+    # --------------------------------------------------------
+
+    rule_prediction = detect_attack_rules(
+        first_row
+    )
+
+
+    rule_prediction = normalize_attack_name(
+        rule_prediction
+    )
+
+
+    # --------------------------------------------------------
+    # Rule details
+    # --------------------------------------------------------
+
+    rule_details = get_rule_details(
+        first_row
+    )
+
+
+    # --------------------------------------------------------
+    # Symbolic confidence
+    # --------------------------------------------------------
+
+    rule_confidence = symbolic_confidence(
+        first_row
+    )
+
+
+    # ========================================================
+    # 3. NEURO-SYMBOLIC FUSION
+    # ========================================================
+
+    final_prediction = fuse_predictions(
+        ml_prediction,
+        rule_prediction,
+    )
+
+
+    final_prediction = normalize_attack_name(
+        final_prediction
+    )
+
+
+    # ========================================================
+    # 4. EXPLANATION
+    # ========================================================
+
+    explanation = generate_explanation(
+        final_prediction,
+        ml_confidence,
+    )
+
+
+    symbolic_explanation = explain_prediction(
+        rule_prediction
+    )
+
+
+    # ========================================================
+    # 5. KNOWLEDGE GRAPH
+    # ========================================================
+
+    knowledge_graph = get_attack_context(
+        final_prediction
+    )
+
+
+    # ========================================================
+    # 6. FINAL RESPONSE
+    # ========================================================
+
+    result = {
+
+        # ----------------------------------------------------
+        # Final Neuro-Symbolic result
+        # ----------------------------------------------------
+
+        "prediction":
+            final_prediction,
+
+
+        # ----------------------------------------------------
+        # Explanation confidence
+        # ----------------------------------------------------
+
+        "confidence":
+            explanation.get(
+                "confidence",
+                round(
+                    ml_confidence * 100,
+                    2,
+                ),
+            ),
+
+
+        # ----------------------------------------------------
+        # Neural-network result
+        # ----------------------------------------------------
+
+        "ml_prediction":
+            ml_prediction,
+
+
+        "ml_confidence":
+            round(
+                ml_confidence * 100,
+                2,
+            ),
+
+
+        "ml_class_index":
+            ml_result[
+                "class_index"
+            ],
+
+
+        # ----------------------------------------------------
+        # Symbolic result
+        # ----------------------------------------------------
+
+        "rule_prediction":
+            rule_prediction,
+
+
+        "symbolic_confidence":
+            rule_confidence,
+
+
+        "rule_details":
+            rule_details,
+
+
+        # ----------------------------------------------------
+        # Explanations
+        # ----------------------------------------------------
+
+        "message":
+            explanation.get(
+                "message",
+                "Prediction generated successfully.",
+            ),
+
+
+        "symbolic_explanation":
+            symbolic_explanation,
+
+
+        # ----------------------------------------------------
+        # Knowledge graph
+        # ----------------------------------------------------
+
+        "knowledge_graph":
+            knowledge_graph,
+
+
+        # ----------------------------------------------------
+        # System information
+        # ----------------------------------------------------
+
+        "model":
+            "AEGIS-NSAI",
+
+
+        "architecture":
+            "Neuro-Symbolic AI",
+
+
+        "input_features":
+            INPUT_SIZE,
+
+
+        "num_classes":
+            NUM_CLASSES,
+
+
+        "rows_processed":
+            ml_result[
+                "rows_processed"
+            ],
+    }
+
+
+    # ========================================================
+    # TERMINAL OUTPUT
+    # ========================================================
+
+    print()
+    print("=" * 70)
+    print(
+        "AEGIS-NSAI NEURO-SYMBOLIC PREDICTION"
+    )
+    print("=" * 70)
+
+
+    print(
+        f"Rows Processed      : "
+        f"{ml_result['rows_processed']}"
+    )
+
+
+    print(
+        f"ML Prediction       : "
+        f"{ml_prediction}"
+    )
+
+
+    print(
+        f"ML Confidence       : "
+        f"{ml_confidence * 100:.2f}%"
+    )
+
+
+    print(
+        f"Symbolic Prediction : "
+        f"{rule_prediction}"
+    )
+
+
+    try:
+
+        symbolic_percentage = float(
+            rule_confidence
+        )
+
+        print(
+            f"Symbolic Evidence   : "
+            f"{symbolic_percentage:.2f}%"
+        )
+
+    except (
+        TypeError,
+        ValueError,
+    ):
+
+        print(
+            f"Symbolic Evidence   : "
+            f"{rule_confidence}"
+        )
+
+
+    print(
+        f"Final Prediction    : "
+        f"{final_prediction}"
+    )
+
+
+    print(
+        f"Knowledge Graph     : "
+        f"{knowledge_graph}"
+    )
+
+
+    print("=" * 70)
+    print()
+
+
+    return result
 
 
 # ============================================================
@@ -435,52 +1048,119 @@ def predict_batch(samples):
 # ============================================================
 
 def get_model_info():
+    """
+    Return information about the loaded AEGIS-NSAI model.
+    """
 
     return {
-        "model": "AEGIS-NSAI Intrusion Detector",
-        "architecture": "Feedforward Neural Network",
-        "input_features": input_size,
-        "num_classes": num_classes,
+
+        "model":
+            "AEGIS-NSAI Intrusion Detector",
+
+
+        "architecture":
+            "Neuro-Symbolic AI",
+
+
+        "input_features":
+            INPUT_SIZE,
+
+
+        "num_classes":
+            NUM_CLASSES,
+
+
         "classes": [
+
             normalize_attack_name(
                 name
             )
+
             for name
             in label_encoder.classes_
+
         ],
     }
 
 
 # ============================================================
-# LOCAL TEST
+# LOCAL MODEL TEST
 # ============================================================
 
 if __name__ == "__main__":
 
-    print("=" * 60)
-    print("AEGIS-NSAI MODEL TEST")
-    print("=" * 60)
+    print()
+    print("=" * 70)
+    print(
+        "AEGIS-NSAI MODEL TEST"
+    )
+    print("=" * 70)
+
 
     print(
-        f"\nModel path:\n{MODEL_PATH}"
+        f"\nProject root:\n"
+        f"{PROJECT_ROOT}"
     )
+
 
     print(
-        f"\nInput features: {input_size}"
+        f"\nModel path:\n"
+        f"{MODEL_PATH}"
     )
+
 
     print(
-        f"Number of classes: {num_classes}"
+        f"\nScaler path:\n"
+        f"{SCALER_PATH}"
     )
 
-    print("\nClasses:")
+
+    print(
+        f"\nLabel encoder path:\n"
+        f"{ENCODER_PATH}"
+    )
+
+
+    print(
+        f"\nFeature names path:\n"
+        f"{FEATURES_PATH}"
+    )
+
+
+    print(
+        f"\nInput features: "
+        f"{INPUT_SIZE}"
+    )
+
+
+    print(
+        f"Number of classes: "
+        f"{NUM_CLASSES}"
+    )
+
+
+    print(
+        "\nClasses:"
+    )
+
 
     for index, name in CLASS_NAMES.items():
 
         print(
-            f"  {index}: {normalize_attack_name(name)}"
+            f"  {index}: "
+            f"{normalize_attack_name(name)}"
         )
+
 
     print(
         "\nModel loaded successfully."
     )
+
+
+    print(
+        "AEGIS-NSAI is ready."
+    )
+
+
+    print("=" * 70)
+    print()
