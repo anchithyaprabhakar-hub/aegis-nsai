@@ -1,36 +1,35 @@
+"""
+AEGIS-NSAI Prediction Pipeline
+
+Neuro-Symbolic AI Intrusion Detection System
+
+Pipeline:
+
+    CSV
+      ↓
+    Data Validation / Cleaning
+      ↓
+    Feature Alignment
+      ↓
+    Scaler
+      ↓
+    Neural Network
+      ↓
+    Symbolic Rule Engine
+      ↓
+    Neuro-Symbolic Fusion
+      ↓
+    Explanation
+      ↓
+    Knowledge Graph
+"""
+
 from pathlib import Path
 
 import joblib
 import numpy as np
 import pandas as pd
 import torch
-
-
-# ============================================================
-# AEGIS-NSAI
-# Neuro-Symbolic AI Intrusion Detection System
-#
-# Pipeline:
-#
-# CSV
-#   ↓
-# Data Validation / Cleaning
-#   ↓
-# Feature Alignment
-#   ↓
-# Scaler
-#   ↓
-# Neural Network
-#   ↓
-# Symbolic Rule Engine
-#   ↓
-# Neuro-Symbolic Fusion
-#   ↓
-# Explanation
-#   ↓
-# Knowledge Graph
-#
-# ============================================================
 
 
 # ============================================================
@@ -182,7 +181,7 @@ if hasattr(scaler, "n_features_in_"):
 
 
 # ============================================================
-# OPTIONAL SCALER FEATURE-NAME VALIDATION
+# VALIDATE SCALER FEATURE NAMES
 # ============================================================
 
 if hasattr(scaler, "feature_names_in_"):
@@ -222,9 +221,9 @@ checkpoint = torch.load(
 )
 
 
-# ------------------------------------------------------------
-# Support common checkpoint formats
-# ------------------------------------------------------------
+# ============================================================
+# SUPPORT COMMON CHECKPOINT FORMATS
+# ============================================================
 
 if isinstance(checkpoint, dict):
 
@@ -249,9 +248,9 @@ else:
     state_dict = checkpoint
 
 
-# ------------------------------------------------------------
-# Load weights
-# ------------------------------------------------------------
+# ============================================================
+# LOAD MODEL WEIGHTS
+# ============================================================
 
 model.load_state_dict(
     state_dict
@@ -292,14 +291,11 @@ def normalize_attack_name(name):
 
         return "Unknown"
 
-
     name = str(name).strip()
-
 
     if not name:
 
         return "Unknown"
-
 
     # --------------------------------------------------------
     # BENIGN
@@ -309,9 +305,8 @@ def normalize_attack_name(name):
 
         return "Normal"
 
-
     # --------------------------------------------------------
-    # Handle common encoding/mojibake variants
+    # Common encoding/mojibake variants
     # --------------------------------------------------------
 
     replacements = {
@@ -344,7 +339,6 @@ def normalize_attack_name(name):
             "Web Attack - XSS",
     }
 
-
     return replacements.get(
         name,
         name
@@ -352,30 +346,33 @@ def normalize_attack_name(name):
 
 
 # ============================================================
-# NORMALIZE CLASS NAMES
+# NORMALIZED CLASS NAMES
 # ============================================================
 
 NORMALIZED_CLASS_NAMES = {
-    index: normalize_attack_name(name)
+
+    index:
+        normalize_attack_name(name)
+
     for index, name
     in CLASS_NAMES.items()
 }
 
 
 # ============================================================
-# PREPARE DATAFRAME
+# DATAFRAME PREPARATION
 # ============================================================
 
 def prepare_dataframe(df):
     """
     Validate and prepare an uploaded network-flow dataframe.
 
-    The dataframe is transformed to exactly the same
-    78-feature structure used during model training.
+    The dataframe is transformed into exactly the same
+    feature structure used during model training.
     """
 
     # --------------------------------------------------------
-    # Validate input existence
+    # Validate input
     # --------------------------------------------------------
 
     if df is None:
@@ -465,16 +462,21 @@ def prepare_dataframe(df):
     # ========================================================
 
     missing_features = [
+
         feature
-        for feature in feature_names
+
+        for feature
+        in feature_names
+
         if feature not in df.columns
     ]
 
 
     if missing_features:
 
-        preview = missing_features[:15]
-
+        preview = (
+            missing_features[:15]
+        )
 
         raise ValueError(
             "Uploaded CSV is missing required "
@@ -495,7 +497,7 @@ def prepare_dataframe(df):
 
 
     # ========================================================
-    # CONVERT ALL FEATURES TO NUMERIC
+    # CONVERT FEATURES TO NUMERIC
     # ========================================================
 
     for column in feature_names:
@@ -518,7 +520,7 @@ def prepare_dataframe(df):
 
 
     # ========================================================
-    # DETECT INVALID VALUES
+    # DETECT INVALID ROWS
     # ========================================================
 
     invalid_rows = int(
@@ -612,12 +614,7 @@ def run_ml_prediction(df):
 
 
     # --------------------------------------------------------
-    # Apply EXACT training scaler
-    #
-    # IMPORTANT:
-    # The scaler was fitted using feature names.
-    # Passing the DataFrame preserves those names and
-    # avoids the sklearn feature-name warning.
+    # Apply exact training scaler
     # --------------------------------------------------------
 
     X_scaled = scaler.transform(
@@ -626,7 +623,7 @@ def run_ml_prediction(df):
 
 
     # --------------------------------------------------------
-    # Final scaler validation
+    # Validate scaler output
     # --------------------------------------------------------
 
     if not np.isfinite(
@@ -658,12 +655,10 @@ def run_ml_prediction(df):
             X_tensor
         )
 
-
         probabilities = torch.softmax(
             output,
             dim=1,
         )
-
 
         confidence_values, predictions = (
             torch.max(
@@ -717,7 +712,9 @@ def run_ml_prediction(df):
             clean_df,
 
         "rows_processed":
-            int(len(clean_df)),
+            int(
+                len(clean_df)
+            ),
     }
 
 
@@ -737,7 +734,7 @@ def predict_attack(df):
           ↓
     Explanation
           ↓
-    Knowledge graph context
+    Knowledge graph
     """
 
     # ========================================================
@@ -768,10 +765,8 @@ def predict_attack(df):
     # 2. SYMBOLIC REASONING
     # ========================================================
 
-    # --------------------------------------------------------
-    # AEGIS-NSAI currently performs symbolic reasoning
-    # using the first uploaded network flow.
-    # --------------------------------------------------------
+    # Current architecture performs symbolic reasoning
+    # using the first uploaded network-flow record.
 
     first_row = (
         clean_df
@@ -804,7 +799,7 @@ def predict_attack(df):
 
 
     # --------------------------------------------------------
-    # Symbolic confidence
+    # Symbolic confidence/evidence
     # --------------------------------------------------------
 
     rule_confidence = symbolic_confidence(
@@ -832,9 +827,12 @@ def predict_attack(df):
     # ========================================================
 
     explanation = generate_explanation(
-        final_prediction,
-        ml_confidence,
-    )
+    final_prediction=final_prediction,
+    ml_prediction=ml_prediction,
+    ml_confidence=ml_confidence,
+    rule_prediction=rule_prediction,
+    symbolic_confidence=rule_confidence,
+)
 
 
     symbolic_explanation = explain_prediction(
@@ -858,7 +856,7 @@ def predict_attack(df):
     result = {
 
         # ----------------------------------------------------
-        # Final Neuro-Symbolic result
+        # Final prediction
         # ----------------------------------------------------
 
         "prediction":
@@ -866,7 +864,11 @@ def predict_attack(df):
 
 
         # ----------------------------------------------------
-        # Explanation confidence
+        # Final confidence
+        #
+        # IMPORTANT:
+        # This currently represents ML confidence.
+        # Symbolic evidence is exposed separately.
         # ----------------------------------------------------
 
         "confidence":
@@ -971,11 +973,18 @@ def predict_attack(df):
     # ========================================================
 
     print()
-    print("=" * 70)
+
+    print(
+        "=" * 70
+    )
+
     print(
         "AEGIS-NSAI NEURO-SYMBOLIC PREDICTION"
     )
-    print("=" * 70)
+
+    print(
+        "=" * 70
+    )
 
 
     print(
@@ -1036,7 +1045,10 @@ def predict_attack(df):
     )
 
 
-    print("=" * 70)
+    print(
+        "=" * 70
+    )
+
     print()
 
 
@@ -1057,18 +1069,14 @@ def get_model_info():
         "model":
             "AEGIS-NSAI Intrusion Detector",
 
-
         "architecture":
             "Neuro-Symbolic AI",
-
 
         "input_features":
             INPUT_SIZE,
 
-
         "num_classes":
             NUM_CLASSES,
-
 
         "classes": [
 
@@ -1090,11 +1098,18 @@ def get_model_info():
 if __name__ == "__main__":
 
     print()
-    print("=" * 70)
+
+    print(
+        "=" * 70
+    )
+
     print(
         "AEGIS-NSAI MODEL TEST"
     )
-    print("=" * 70)
+
+    print(
+        "=" * 70
+    )
 
 
     print(
@@ -1162,5 +1177,8 @@ if __name__ == "__main__":
     )
 
 
-    print("=" * 70)
+    print(
+        "=" * 70
+    )
+
     print()
