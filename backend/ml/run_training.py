@@ -1,6 +1,5 @@
 from pathlib import Path
 
-import joblib
 import numpy as np
 import torch
 import torch.nn as nn
@@ -23,31 +22,38 @@ from .train import IntrusionDetector
 
 BASE_DIR = Path(__file__).resolve().parent
 
+DATASET_DIR = (
+    BASE_DIR.parent.parent
+    / "datasets"
+    / "cic-ids2017"
+    / "MachineLearningCVE"
+)
+
 MODEL_PATH = BASE_DIR / "intrusion_detector.pth"
 SCALER_PATH = BASE_DIR / "scaler.joblib"
 ENCODER_PATH = BASE_DIR / "label_encoder.joblib"
-FEATURES_PATH = BASE_DIR / "feature_names.joblib"
+FEATURE_NAMES_PATH = BASE_DIR / "feature_names.joblib"
 
 
 # ============================================================
 # TRAINING CONFIGURATION
 # ============================================================
 
-EPOCHS = 20
-LEARNING_RATE = 0.001
-
-BATCH_SIZE = 2048
-
-VALIDATION_SIZE = 0.15
-TEST_SIZE = 0.15
-
 RANDOM_STATE = 42
 
-PATIENCE = 5
+TEST_SIZE = 0.15
+VALIDATION_SIZE = 0.15
+
+EPOCHS = 20
+BATCH_SIZE = 2048
+
+LEARNING_RATE = 0.001
+
+EARLY_STOPPING_PATIENCE = 8
 
 
 # ============================================================
-# MAIN TRAINING FUNCTION
+# TRAINING FUNCTION
 # ============================================================
 
 def train_model():
@@ -60,7 +66,13 @@ def train_model():
     # 1. Load dataset
     # --------------------------------------------------------
 
-    print("\n[1/9] Loading CIC-IDS2017 dataset...")
+    print(
+        "\n[1/9] Loading CIC-IDS2017 dataset..."
+    )
+
+    print(
+        f"\nDataset directory:\n{DATASET_DIR}"
+    )
 
     df = load_dataset()
 
@@ -72,19 +84,33 @@ def train_model():
     # 2. Clean dataset
     # --------------------------------------------------------
 
-    print("\n[2/9] Cleaning dataset...")
+    print(
+        "\n[2/9] Cleaning dataset..."
+    )
+
+    rows_before = len(df)
 
     df = clean_dataset(df)
+
+    rows_removed = (
+        rows_before - len(df)
+    )
+
+    print(
+        f"Removed {rows_removed:,} invalid rows"
+    )
 
     print(
         f"Cleaned dataset shape: {df.shape}"
     )
 
     # --------------------------------------------------------
-    # 3. Feature engineering
+    # 3. Prepare features
     # --------------------------------------------------------
 
-    print("\n[3/9] Preparing features...")
+    print(
+        "\n[3/9] Preparing features..."
+    )
 
     (
         X,
@@ -94,7 +120,10 @@ def train_model():
     ) = prepare_training_dataset(df)
 
     input_size = X.shape[1]
-    num_classes = len(encoder.classes_)
+
+    num_classes = len(
+        encoder.classes_
+    )
 
     print(
         f"Input features : {input_size}"
@@ -104,20 +133,21 @@ def train_model():
         f"Attack classes : {num_classes}"
     )
 
-    print("\nDetected attack classes:")
+    print(
+        "\nDetected attack classes:"
+    )
 
-    for index, class_name in enumerate(
+    for class_id, class_name in enumerate(
         encoder.classes_
     ):
+
         print(
-            f"  {index}: {class_name}"
+            f"  {class_id}: {class_name}"
         )
 
-    # --------------------------------------------------------
-    # Class distribution
-    # --------------------------------------------------------
-
-    print("\nClass distribution:")
+    print(
+        "\nClass distribution:"
+    )
 
     unique_classes, class_counts = np.unique(
         y,
@@ -160,7 +190,7 @@ def train_model():
         stratify=y
     )
 
-    # Split remaining 85% into:
+    # Split the remaining 85% into:
     #   70% train
     #   15% validation
     validation_fraction = (
@@ -250,7 +280,7 @@ def train_model():
     )
 
     # --------------------------------------------------------
-    # 7. Create model + weighted loss
+    # 7. Create model + controlled weighted loss
     # --------------------------------------------------------
 
     print(
@@ -262,10 +292,25 @@ def train_model():
         num_classes
     )
 
-    class_weights = compute_class_weight(
+    # Calculate standard balanced class weights.
+    balanced_weights = compute_class_weight(
         class_weight="balanced",
         classes=np.unique(y_train),
         y=y_train
+    )
+
+    # --------------------------------------------------------
+    # CONTROLLED CLASS WEIGHTING
+    #
+    # The standard "balanced" strategy can produce extremely
+    # large weights for classes with very few samples.
+    #
+    # Applying sqrt() softens those extreme values while
+    # preserving additional importance for minority classes.
+    # --------------------------------------------------------
+
+    class_weights = np.sqrt(
+        balanced_weights
     )
 
     class_weights_tensor = torch.tensor(
@@ -273,7 +318,26 @@ def train_model():
         dtype=torch.float32
     )
 
-    print("\nClass weights:")
+    print(
+        "\nBalanced class weights:"
+    )
+
+    for class_id, weight in enumerate(
+        balanced_weights
+    ):
+
+        class_name = encoder.inverse_transform(
+            [class_id]
+        )[0]
+
+        print(
+            f"  {class_name:<25} "
+            f"{weight:.4f}"
+        )
+
+    print(
+        "\nControlled sqrt class weights:"
+    )
 
     for class_id, weight in enumerate(
         class_weights
@@ -309,24 +373,33 @@ def train_model():
     )
 
     # --------------------------------------------------------
-    # 8. Training
+    # 8. Train model
     # --------------------------------------------------------
 
     print(
         "\n[8/9] Training model..."
     )
 
-    print()
-
     best_val_loss = float("inf")
+
+    best_model_state = None
+
     patience_counter = 0
 
-    for epoch in range(EPOCHS):
+    for epoch in range(
+        EPOCHS
+    ):
+
+        # ----------------------------------------------------
+        # Training
+        # ----------------------------------------------------
 
         model.train()
 
         running_loss = 0.0
+
         correct = 0
+
         total = 0
 
         for batch_X, batch_y in train_loader:
@@ -376,6 +449,12 @@ def train_model():
 
         model.eval()
 
+        val_loss_total = 0.0
+
+        val_correct = 0
+
+        val_total = 0
+
         with torch.no_grad():
 
             val_outputs = model(
@@ -385,38 +464,56 @@ def train_model():
             val_loss = criterion(
                 val_outputs,
                 y_val_tensor
-            ).item()
+            )
 
             val_predictions = torch.argmax(
                 val_outputs,
                 dim=1
             )
 
-            val_accuracy = (
-                val_predictions == y_val_tensor
-            ).float().mean().item() * 100
+            val_loss_total = (
+                val_loss.item()
+            )
+
+            val_correct = (
+                val_predictions
+                == y_val_tensor
+            ).sum().item()
+
+            val_total = (
+                y_val_tensor.size(0)
+            )
+
+        val_loss_value = (
+            val_loss_total
+        )
+
+        val_accuracy = (
+            val_correct / val_total
+        ) * 100
 
         print(
-            f"Epoch {epoch + 1:02d}/{EPOCHS} "
-            f"| Train Loss: {train_loss:.4f} "
-            f"| Train Acc: {train_accuracy:.2f}% "
-            f"| Val Loss: {val_loss:.4f} "
-            f"| Val Acc: {val_accuracy:.2f}%"
+            f"Epoch {epoch + 1:02d}/{EPOCHS} | "
+            f"Train Loss: {train_loss:.4f} | "
+            f"Train Acc: {train_accuracy:.2f}% | "
+            f"Val Loss: {val_loss_value:.4f} | "
+            f"Val Acc: {val_accuracy:.2f}%"
         )
 
         # ----------------------------------------------------
-        # Best checkpoint
+        # Save best validation model
         # ----------------------------------------------------
 
-        if val_loss < best_val_loss:
+        if val_loss_value < best_val_loss:
 
-            best_val_loss = val_loss
+            best_val_loss = val_loss_value
+
+            best_model_state = {
+                key: value.clone()
+                for key, value in model.state_dict().items()
+            }
+
             patience_counter = 0
-
-            torch.save(
-                model.state_dict(),
-                MODEL_PATH
-            )
 
             print(
                 "   -> Best model saved."
@@ -426,21 +523,45 @@ def train_model():
 
             patience_counter += 1
 
-            if patience_counter >= PATIENCE:
+        # ----------------------------------------------------
+        # Early stopping
+        # ----------------------------------------------------
 
-                print(
-                    "\nEarly stopping triggered."
-                )
+        if (
+            patience_counter
+            >= EARLY_STOPPING_PATIENCE
+        ):
 
-                break
+            print(
+                "\nEarly stopping triggered."
+            )
+
+            break
 
     # --------------------------------------------------------
-    # 9. Save artifacts + untouched test set
+    # Restore best validation model
+    # --------------------------------------------------------
+
+    if best_model_state is not None:
+
+        model.load_state_dict(
+            best_model_state
+        )
+
+    # --------------------------------------------------------
+    # 9. Save preprocessing artifacts
     # --------------------------------------------------------
 
     print(
         "\n[9/9] Saving preprocessing artifacts..."
     )
+
+    torch.save(
+        model.state_dict(),
+        MODEL_PATH
+    )
+
+    import joblib
 
     joblib.dump(
         scaler,
@@ -454,10 +575,12 @@ def train_model():
 
     joblib.dump(
         feature_names,
-        FEATURES_PATH
+        FEATURE_NAMES_PATH
     )
 
-    print("\nSaved:")
+    print(
+        "\nSaved:"
+    )
 
     print(
         f"Model         : {MODEL_PATH}"
@@ -472,12 +595,20 @@ def train_model():
     )
 
     print(
-        f"Features      : {FEATURES_PATH}"
+        f"Features      : {FEATURE_NAMES_PATH}"
     )
 
-    print("\n" + "=" * 70)
-    print("TRAINING COMPLETE")
-    print("=" * 70)
+    print(
+        "\n" + "=" * 70
+    )
+
+    print(
+        "TRAINING COMPLETE"
+    )
+
+    print(
+        "=" * 70
+    )
 
     print(
         "\nTest set was held out completely from "
