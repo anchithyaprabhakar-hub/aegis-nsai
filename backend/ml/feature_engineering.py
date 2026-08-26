@@ -6,25 +6,27 @@ from sklearn.preprocessing import LabelEncoder, StandardScaler
 
 def prepare_training_dataset(df):
     """
-    Prepare the CIC-IDS2017 dataset for model training.
+    Prepare raw CIC-IDS2017 data for training.
 
     Returns:
-        X_scaled       : scaled feature matrix
+        X              : unscaled numeric feature matrix
         y_encoded      : encoded labels
         encoder        : fitted LabelEncoder
-        scaler         : fitted StandardScaler
-        feature_names  : list of training feature names
+        feature_names  : exact feature order
     """
 
     df = df.copy()
 
     # Clean column names
-    df.columns = df.columns.str.strip()
+    df.columns = df.columns.astype(str).str.strip()
 
-    # Remove infinite values
-    df.replace([np.inf, -np.inf], np.nan, inplace=True)
+    # Remove invalid numeric values
+    df.replace(
+        [np.inf, -np.inf],
+        np.nan,
+        inplace=True
+    )
 
-    # Remove rows containing NaN
     df.dropna(inplace=True)
 
     if "Label" not in df.columns:
@@ -34,33 +36,41 @@ def prepare_training_dataset(df):
 
     # Separate features and labels
     X = df.drop(columns=["Label"])
-    y = df["Label"].astype(str).str.strip()
 
-    # Keep only numeric features
-    X = X.select_dtypes(include=[np.number])
+    y = (
+        df["Label"]
+        .astype(str)
+        .str.strip()
+    )
+
+    # Keep numeric features only
+    X = X.select_dtypes(
+        include=[np.number]
+    )
 
     if X.empty:
         raise ValueError(
             "No numeric features found in the dataset."
         )
 
-    # Save exact feature order
+    # Preserve exact feature order
     feature_names = X.columns.tolist()
 
-    # Encode attack labels
+    # Encode labels
     encoder = LabelEncoder()
+
     y_encoded = encoder.fit_transform(y)
 
-    # Fit scaler ONLY on training data
-    scaler = StandardScaler()
-
-    X_scaled = scaler.fit_transform(X)
+    # IMPORTANT:
+    # Scaling is intentionally NOT performed here.
+    #
+    # The scaler must be fitted only on the training split
+    # to prevent validation/test data leakage.
 
     return (
-        X_scaled,
+        X.to_numpy(dtype=np.float32),
         y_encoded,
         encoder,
-        scaler,
         feature_names
     )
 
@@ -78,31 +88,37 @@ def prepare_prediction_dataset(
     df = df.copy()
 
     # Clean column names
-    df.columns = df.columns.str.strip()
+    df.columns = (
+        df.columns
+        .astype(str)
+        .str.strip()
+    )
 
-    # If uploaded CSV contains labels, remove them
+    # Remove label if supplied
     if "Label" in df.columns:
-        df = df.drop(columns=["Label"])
+        df = df.drop(
+            columns=["Label"]
+        )
 
-    # Replace infinite values
+    # Replace invalid values
     df.replace(
         [np.inf, -np.inf],
         np.nan,
         inplace=True
     )
 
-    # Convert columns to numeric where possible
+    # Convert to numeric
     for column in df.columns:
         df[column] = pd.to_numeric(
             df[column],
             errors="coerce"
         )
 
-    # Keep only the features used during training
+    # Check required features
     missing_features = [
-        column
-        for column in feature_names
-        if column not in df.columns
+        feature
+        for feature in feature_names
+        if feature not in df.columns
     ]
 
     if missing_features:
@@ -111,8 +127,10 @@ def prepare_prediction_dataset(
             + ", ".join(missing_features[:10])
         )
 
-    # Ignore extra columns and preserve training order
-    X = df[feature_names]
+    # Preserve exact training feature order
+    X = df[
+        feature_names
+    ].copy()
 
     # Remove invalid rows
     X.replace(
@@ -121,7 +139,9 @@ def prepare_prediction_dataset(
         inplace=True
     )
 
-    X.dropna(inplace=True)
+    X.dropna(
+        inplace=True
+    )
 
     if X.empty:
         raise ValueError(
@@ -129,48 +149,66 @@ def prepare_prediction_dataset(
         )
 
     # IMPORTANT:
-    # Do NOT fit the scaler again.
+    # Never fit the scaler during prediction.
     X_scaled = scaler.transform(X)
 
     return X_scaled
 
 
+def fit_training_scaler(
+    X_train,
+    X_val,
+    X_test
+):
+    """
+    Fit StandardScaler ONLY on training data.
+
+    Validation and test data are transformed using
+    statistics learned exclusively from X_train.
+    """
+
+    scaler = StandardScaler()
+
+    X_train_scaled = scaler.fit_transform(
+        X_train
+    )
+
+    X_val_scaled = scaler.transform(
+        X_val
+    )
+
+    X_test_scaled = scaler.transform(
+        X_test
+    )
+
+    return (
+        X_train_scaled,
+        X_val_scaled,
+        X_test_scaled,
+        scaler
+    )
+
+
 # Backwards-compatible function
 def prepare_dataset(df):
     """
-    Compatibility wrapper.
+    Legacy compatibility wrapper.
 
-    This function is retained so existing imports do not
-    immediately break. New training and prediction code
-    should use the dedicated functions above.
+    New training code should use:
+        prepare_training_dataset()
+        fit_training_scaler()
     """
 
-    df = df.copy()
-    df.columns = df.columns.str.strip()
+    result = prepare_training_dataset(df)
 
-    if "Label" in df.columns:
+    X, y, encoder, feature_names = result
 
-        X = df.drop(columns=["Label"])
-        y = df["Label"]
+    scaler = StandardScaler()
 
-        X = X.select_dtypes(include=[np.number])
+    X_scaled = scaler.fit_transform(X)
 
-        encoder = LabelEncoder()
-        y_encoded = encoder.fit_transform(y)
-
-        scaler = StandardScaler()
-        X_scaled = scaler.fit_transform(X)
-
-        return X_scaled, y_encoded, encoder
-
-    else:
-
-        X = df.select_dtypes(
-            include=[np.number]
-        )
-
-        scaler = StandardScaler()
-
-        X_scaled = scaler.fit_transform(X)
-
-        return X_scaled, None, None
+    return (
+        X_scaled,
+        y,
+        encoder
+    )

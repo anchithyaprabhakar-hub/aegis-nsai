@@ -10,7 +10,10 @@ from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_class_weight
 
 from .preprocess import load_dataset, clean_dataset
-from .feature_engineering import prepare_training_dataset
+from .feature_engineering import (
+    prepare_training_dataset,
+    fit_training_scaler,
+)
 from .train import IntrusionDetector
 
 
@@ -35,7 +38,9 @@ LEARNING_RATE = 0.001
 
 BATCH_SIZE = 2048
 
-VALIDATION_SIZE = 0.20
+VALIDATION_SIZE = 0.15
+TEST_SIZE = 0.15
+
 RANDOM_STATE = 42
 
 PATIENCE = 5
@@ -55,46 +60,58 @@ def train_model():
     # 1. Load dataset
     # --------------------------------------------------------
 
-    print("\n[1/8] Loading CIC-IDS2017 dataset...")
+    print("\n[1/9] Loading CIC-IDS2017 dataset...")
 
     df = load_dataset()
 
-    print(f"Dataset shape: {df.shape}")
+    print(
+        f"Dataset shape: {df.shape}"
+    )
 
     # --------------------------------------------------------
     # 2. Clean dataset
     # --------------------------------------------------------
 
-    print("\n[2/8] Cleaning dataset...")
+    print("\n[2/9] Cleaning dataset...")
 
     df = clean_dataset(df)
 
-    print(f"Cleaned dataset shape: {df.shape}")
+    print(
+        f"Cleaned dataset shape: {df.shape}"
+    )
 
     # --------------------------------------------------------
     # 3. Feature engineering
     # --------------------------------------------------------
 
-    print("\n[3/8] Preparing features...")
+    print("\n[3/9] Preparing features...")
 
     (
         X,
         y,
         encoder,
-        scaler,
         feature_names
     ) = prepare_training_dataset(df)
 
     input_size = X.shape[1]
     num_classes = len(encoder.classes_)
 
-    print(f"Input features : {input_size}")
-    print(f"Attack classes : {num_classes}")
+    print(
+        f"Input features : {input_size}"
+    )
+
+    print(
+        f"Attack classes : {num_classes}"
+    )
 
     print("\nDetected attack classes:")
 
-    for index, class_name in enumerate(encoder.classes_):
-        print(f"  {index}: {class_name}")
+    for index, class_name in enumerate(
+        encoder.classes_
+    ):
+        print(
+            f"  {index}: {class_name}"
+        )
 
     # --------------------------------------------------------
     # Class distribution
@@ -111,7 +128,10 @@ def train_model():
         unique_classes,
         class_counts
     ):
-        class_name = encoder.inverse_transform([class_id])[0]
+
+        class_name = encoder.inverse_transform(
+            [class_id]
+        )[0]
 
         percentage = (
             count / len(y)
@@ -124,27 +144,80 @@ def train_model():
         )
 
     # --------------------------------------------------------
-    # 4. Train / validation split
+    # 4. Train / validation / test split
     # --------------------------------------------------------
 
-    print("\n[4/8] Creating train/validation split...")
+    print(
+        "\n[4/9] Creating train/validation/test split..."
+    )
 
-    X_train, X_val, y_train, y_val = train_test_split(
+    # First separate the final test set.
+    X_temp, X_test, y_temp, y_test = train_test_split(
         X,
         y,
-        test_size=VALIDATION_SIZE,
+        test_size=TEST_SIZE,
         random_state=RANDOM_STATE,
         stratify=y
     )
 
-    print(f"Training samples   : {len(X_train)}")
-    print(f"Validation samples : {len(X_val)}")
+    # Split remaining 85% into:
+    #   70% train
+    #   15% validation
+    validation_fraction = (
+        VALIDATION_SIZE
+        / (1.0 - TEST_SIZE)
+    )
+
+    X_train, X_val, y_train, y_val = train_test_split(
+        X_temp,
+        y_temp,
+        test_size=validation_fraction,
+        random_state=RANDOM_STATE,
+        stratify=y_temp
+    )
+
+    print(
+        f"Training samples   : {len(X_train):,}"
+    )
+
+    print(
+        f"Validation samples : {len(X_val):,}"
+    )
+
+    print(
+        f"Test samples       : {len(X_test):,}"
+    )
 
     # --------------------------------------------------------
-    # 5. Convert to tensors
+    # 5. Fit scaler ONLY on training data
     # --------------------------------------------------------
 
-    print("\n[5/8] Converting data to PyTorch tensors...")
+    print(
+        "\n[5/9] Fitting scaler on training data only..."
+    )
+
+    (
+        X_train,
+        X_val,
+        X_test,
+        scaler
+    ) = fit_training_scaler(
+        X_train,
+        X_val,
+        X_test
+    )
+
+    print(
+        "Scaler fitted using training data only."
+    )
+
+    # --------------------------------------------------------
+    # 6. Convert to tensors
+    # --------------------------------------------------------
+
+    print(
+        "\n[6/9] Converting data to PyTorch tensors..."
+    )
 
     X_train_tensor = torch.tensor(
         X_train,
@@ -166,21 +239,28 @@ def train_model():
         dtype=torch.long
     )
 
+    X_test_tensor = torch.tensor(
+        X_test,
+        dtype=torch.float32
+    )
+
+    y_test_tensor = torch.tensor(
+        y_test,
+        dtype=torch.long
+    )
+
     # --------------------------------------------------------
-    # 6. Create model + weighted loss
+    # 7. Create model + weighted loss
     # --------------------------------------------------------
 
-    print("\n[6/8] Creating neural network...")
+    print(
+        "\n[7/9] Creating neural network..."
+    )
 
     model = IntrusionDetector(
         input_size,
         num_classes
     )
-
-    # --------------------------------------------------------
-    # IMPORTANT:
-    # Give minority classes higher loss weight.
-    # --------------------------------------------------------
 
     class_weights = compute_class_weight(
         class_weight="balanced",
@@ -195,8 +275,13 @@ def train_model():
 
     print("\nClass weights:")
 
-    for class_id, weight in enumerate(class_weights):
-        class_name = encoder.inverse_transform([class_id])[0]
+    for class_id, weight in enumerate(
+        class_weights
+    ):
+
+        class_name = encoder.inverse_transform(
+            [class_id]
+        )[0]
 
         print(
             f"  {class_name:<25} "
@@ -212,10 +297,6 @@ def train_model():
         lr=LEARNING_RATE
     )
 
-    # --------------------------------------------------------
-    # Mini-batch training
-    # --------------------------------------------------------
-
     train_dataset = torch.utils.data.TensorDataset(
         X_train_tensor,
         y_train_tensor
@@ -228,10 +309,13 @@ def train_model():
     )
 
     # --------------------------------------------------------
-    # 7. Training
+    # 8. Training
     # --------------------------------------------------------
 
-    print("\n[7/8] Training model...")
+    print(
+        "\n[8/9] Training model..."
+    )
+
     print()
 
     best_val_loss = float("inf")
@@ -249,7 +333,9 @@ def train_model():
 
             optimizer.zero_grad()
 
-            outputs = model(batch_X)
+            outputs = model(
+                batch_X
+            )
 
             loss = criterion(
                 outputs,
@@ -261,7 +347,8 @@ def train_model():
             optimizer.step()
 
             running_loss += (
-                loss.item() * batch_X.size(0)
+                loss.item()
+                * batch_X.size(0)
             )
 
             predictions = torch.argmax(
@@ -275,8 +362,13 @@ def train_model():
 
             total += batch_y.size(0)
 
-        train_loss = running_loss / total
-        train_accuracy = (correct / total) * 100
+        train_loss = (
+            running_loss / total
+        )
+
+        train_accuracy = (
+            correct / total
+        ) * 100
 
         # ----------------------------------------------------
         # Validation
@@ -313,7 +405,7 @@ def train_model():
         )
 
         # ----------------------------------------------------
-        # Save best model
+        # Best checkpoint
         # ----------------------------------------------------
 
         if val_loss < best_val_loss:
@@ -343,10 +435,12 @@ def train_model():
                 break
 
     # --------------------------------------------------------
-    # 8. Save preprocessing artifacts
+    # 9. Save artifacts + untouched test set
     # --------------------------------------------------------
 
-    print("\n[8/8] Saving preprocessing artifacts...")
+    print(
+        "\n[9/9] Saving preprocessing artifacts..."
+    )
 
     joblib.dump(
         scaler,
@@ -384,6 +478,16 @@ def train_model():
     print("\n" + "=" * 70)
     print("TRAINING COMPLETE")
     print("=" * 70)
+
+    print(
+        "\nTest set was held out completely from "
+        "model training and validation."
+    )
+
+    print(
+        "Use the dedicated test evaluator for "
+        "final performance measurement."
+    )
 
 
 # ============================================================
