@@ -72,7 +72,9 @@ def health():
 
     return {
         "status": "healthy",
-        "service": "AEGIS-NSAI API"
+        "service": "AEGIS-NSAI API",
+        "model_loaded": True,
+        "architecture": "Neuro-Symbolic AI",
     }
 
 
