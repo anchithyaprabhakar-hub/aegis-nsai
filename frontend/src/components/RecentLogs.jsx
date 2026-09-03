@@ -33,7 +33,6 @@ function RecentLogs({ logs }) {
 
   return (
     <div className="info-card recent-logs">
-
       <div
         style={{
           display: "flex",
@@ -84,20 +83,18 @@ function RecentLogs({ logs }) {
         </div>
       ) : (
         <div className="logs">
-
           {logs.map((log, index) => {
-
-            const severity = getSeverity(log.confidence);
+            const severity = getSeverity(
+              Number(log.confidence)
+            );
 
             return (
-
               <div
                 key={index}
                 className={`log-row ${
                   index === 0 ? "latest-row" : ""
                 }`}
               >
-
                 <div
                   style={{
                     display: "flex",
@@ -119,6 +116,7 @@ function RecentLogs({ logs }) {
                     alignItems: "center",
                     gap: "8px",
                   }}
+                  title="Detection timestamp"
                 >
                   <FaClock color="#9ca3af" />
 
@@ -167,15 +165,12 @@ function RecentLogs({ logs }) {
 
                 {index === 0 && (
                   <span className="latest-badge">
-                    ● LIVE
+                    ● ANALYZED
                   </span>
                 )}
-
               </div>
-
             );
           })}
-
         </div>
       )}
     </div>

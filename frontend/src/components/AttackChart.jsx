@@ -1,12 +1,10 @@
-import {
-  Pie
-} from "react-chartjs-2";
+import { Pie } from "react-chartjs-2";
 
 import {
   Chart as ChartJS,
   ArcElement,
   Tooltip,
-  Legend
+  Legend,
 } from "chart.js";
 
 ChartJS.register(
@@ -16,12 +14,13 @@ ChartJS.register(
 );
 
 function AttackChart({ logs }) {
-
   const attackCounts = {};
 
   logs.forEach((log) => {
-    attackCounts[log.prediction] =
-      (attackCounts[log.prediction] || 0) + 1;
+    const prediction = log.prediction || "Unknown";
+
+    attackCounts[prediction] =
+      (attackCounts[prediction] || 0) + 1;
   });
 
   const data = {
@@ -48,19 +47,32 @@ function AttackChart({ logs }) {
   };
 
   const options = {
-
     responsive: true,
 
+    maintainAspectRatio: false,
+
     plugins: {
-
       legend: {
-
         position: "bottom",
 
         labels: {
           color: "#ffffff",
+
           font: {
             size: 14,
+          },
+
+          padding: 18,
+        },
+      },
+
+      tooltip: {
+        callbacks: {
+          label: (context) => {
+            const label = context.label || "";
+            const value = context.raw || 0;
+
+            return `${label}: ${value}`;
           },
         },
       },
@@ -77,16 +89,21 @@ function AttackChart({ logs }) {
       <h3>Attack Distribution</h3>
 
       {logs.length === 0 ? (
-
         <p>No attack data available.</p>
-
       ) : (
-
-        <Pie
-          data={data}
-          options={options}
-        />
-
+        <div
+          style={{
+            position: "relative",
+            width: "100%",
+            height: "380px",
+            marginTop: "20px",
+          }}
+        >
+          <Pie
+            data={data}
+            options={options}
+          />
+        </div>
       )}
     </div>
   );

@@ -15,7 +15,9 @@ Pipeline:
       ↓
     Neural Network
       ↓
-    Symbolic Rule Engine
+    Dataset-Level ML Aggregation
+      ↓
+    Dataset-Level Symbolic Reasoning
       ↓
     Neuro-Symbolic Fusion
       ↓
@@ -24,7 +26,10 @@ Pipeline:
     Knowledge Graph
 """
 
+
 from pathlib import Path
+
+from collections import Counter
 
 import joblib
 import numpy as np
@@ -291,11 +296,14 @@ def normalize_attack_name(name):
 
         return "Unknown"
 
+
     name = str(name).strip()
+
 
     if not name:
 
         return "Unknown"
+
 
     # --------------------------------------------------------
     # BENIGN
@@ -304,6 +312,7 @@ def normalize_attack_name(name):
     if name.upper() == "BENIGN":
 
         return "Normal"
+
 
     # --------------------------------------------------------
     # Common encoding/mojibake variants
@@ -338,6 +347,7 @@ def normalize_attack_name(name):
         "Web Attack — XSS":
             "Web Attack - XSS",
     }
+
 
     return replacements.get(
         name,
@@ -602,6 +612,11 @@ def prepare_dataframe(df):
 def run_ml_prediction(df):
     """
     Run the neural-network component of AEGIS-NSAI.
+
+    Every uploaded network flow is classified.
+
+    Dataset-level aggregation determines the dominant
+    neural prediction.
     """
 
     # --------------------------------------------------------
@@ -669,22 +684,175 @@ def run_ml_prediction(df):
 
 
     # ========================================================
-    # FIRST FLOW
+    # CONVERT TENSORS TO NUMPY
     # ========================================================
 
-    class_index = int(
-        predictions[0].item()
+    prediction_indices = (
+        predictions
+        .cpu()
+        .numpy()
     )
 
 
-    confidence = float(
-        confidence_values[0].item()
+    confidence_array = (
+        confidence_values
+        .cpu()
+        .numpy()
     )
 
 
-    attack_name = normalize_attack_name(
+    # ========================================================
+    # DATASET VALIDATION
+    # ========================================================
+
+    total_rows = int(
+        len(prediction_indices)
+    )
+
+
+    if total_rows == 0:
+
+        raise ValueError(
+            "Neural network produced no predictions."
+        )
+
+
+    # ========================================================
+    # COUNT PREDICTIONS FOR EVERY CLASS
+    # ========================================================
+
+    class_counts = np.bincount(
+        prediction_indices,
+        minlength=NUM_CLASSES,
+    )
+
+
+    # ========================================================
+    # DATASET-LEVEL CLASS DISTRIBUTION
+    # ========================================================
+
+    class_distribution = {}
+
+    for class_index, count in enumerate(
+        class_counts
+    ):
+
+        class_name = normalize_attack_name(
+            NORMALIZED_CLASS_NAMES.get(
+                class_index,
+                "Unknown",
+            )
+        )
+
+        percentage = (
+            float(count)
+            / total_rows
+            * 100
+        )
+
+        class_distribution[
+            class_name
+        ] = round(
+            percentage,
+            2,
+        )
+
+
+    # ========================================================
+    # DATASET-LEVEL CLASS COUNTS
+    # ========================================================
+
+    class_counts_dict = {}
+
+    for class_index, count in enumerate(
+        class_counts
+    ):
+
+        class_name = normalize_attack_name(
+            NORMALIZED_CLASS_NAMES.get(
+                class_index,
+                "Unknown",
+            )
+        )
+
+        class_counts_dict[
+            class_name
+        ] = int(count)
+
+
+    # ========================================================
+    # DETERMINE DOMINANT ML CLASS
+    # ========================================================
+
+    dominant_class_index = int(
+        np.argmax(
+            class_counts
+        )
+    )
+
+
+    dominant_prediction = normalize_attack_name(
         NORMALIZED_CLASS_NAMES.get(
-            class_index,
+            dominant_class_index,
+            "Unknown",
+        )
+    )
+
+
+    dominant_count = int(
+        class_counts[
+            dominant_class_index
+        ]
+    )
+
+
+    dominant_percentage = (
+        dominant_count
+        / total_rows
+        * 100
+    )
+
+
+    # ========================================================
+    # DOMINANT CLASS CONFIDENCE
+    # ========================================================
+
+    dominant_mask = (
+        prediction_indices
+        == dominant_class_index
+    )
+
+
+    if dominant_mask.any():
+
+        dominant_confidence = float(
+            confidence_array[
+                dominant_mask
+            ].mean()
+        )
+
+    else:
+
+        dominant_confidence = 0.0
+
+
+    # ========================================================
+    # FIRST FLOW INFORMATION
+    # ========================================================
+
+    first_class_index = int(
+        prediction_indices[0]
+    )
+
+
+    first_confidence = float(
+        confidence_array[0]
+    )
+
+
+    first_prediction = normalize_attack_name(
+        NORMALIZED_CLASS_NAMES.get(
+            first_class_index,
             "Unknown",
         )
     )
@@ -697,24 +865,392 @@ def run_ml_prediction(df):
     return {
 
         "prediction":
-            attack_name,
+            dominant_prediction,
 
         "confidence":
-            confidence,
+            dominant_confidence,
 
         "class_index":
-            class_index,
+            dominant_class_index,
 
-        "probabilities":
-            probabilities[0].tolist(),
+        "dominant_count":
+            dominant_count,
+
+        "dominant_percentage":
+            round(
+                dominant_percentage,
+                2,
+            ),
+
+        "class_distribution":
+            class_distribution,
+
+        "class_counts":
+            class_counts_dict,
+
+        "first_prediction":
+            first_prediction,
+
+        "first_confidence":
+            first_confidence,
+
+        "first_class_index":
+            first_class_index,
+
+        "predictions":
+            prediction_indices,
+
+        "confidence_values":
+            confidence_array,
 
         "clean_df":
             clean_df,
 
         "rows_processed":
-            int(
-                len(clean_df)
+            total_rows,
+    }
+
+
+# ============================================================
+# DATASET-LEVEL SYMBOLIC REASONING
+# ============================================================
+
+def run_symbolic_prediction(clean_df):
+    """
+    Run the symbolic rule engine over EVERY network flow.
+
+    IMPORTANT:
+
+    The symbolic engine must not classify an uploaded dataset
+    using only its first row.
+
+    Every flow is independently evaluated.
+
+    The final symbolic classification is determined from the
+    distribution of symbolic predictions across the dataset.
+
+    This prevents one unusual first flow from incorrectly
+    representing the entire uploaded dataset.
+    """
+
+    if clean_df is None:
+
+        raise ValueError(
+            "No dataframe provided to symbolic engine."
+        )
+
+
+    if clean_df.empty:
+
+        return {
+
+            "prediction":
+                "Normal",
+
+            "confidence":
+                0.0,
+
+            "support":
+                0.0,
+
+            "prediction_counts":
+                {},
+
+            "prediction_distribution":
+                {},
+
+            "rule_counts":
+                {},
+
+            "rule_distribution":
+                {},
+
+            "first_prediction":
+                "Normal",
+
+            "first_confidence":
+                0.0,
+
+            "first_rule_details":
+                {},
+
+        }
+
+
+    # ========================================================
+    # STORAGE
+    # ========================================================
+
+    prediction_counter = Counter()
+
+    rule_counter = Counter()
+
+    first_prediction = "Normal"
+
+    first_confidence = 0.0
+
+    first_rule_details = {}
+
+
+    # ========================================================
+    # EVALUATE EVERY FLOW
+    # ========================================================
+
+    total_rows = len(
+        clean_df
+    )
+
+
+    for row_index, row in enumerate(
+        clean_df.itertuples(
+            index=False,
+            name=None,
+        )
+    ):
+
+        features = dict(
+            zip(
+                feature_names,
+                row,
+            )
+        )
+
+
+        # ----------------------------------------------------
+        # Symbolic prediction
+        # ----------------------------------------------------
+
+        prediction = detect_attack_rules(
+            features
+        )
+
+
+        prediction = normalize_attack_name(
+            prediction
+        )
+
+
+        prediction_counter[
+            prediction
+        ] += 1
+
+
+        # ----------------------------------------------------
+        # Rule details
+        # ----------------------------------------------------
+
+        details = get_rule_details(
+            features
+        )
+
+
+        for rule_name, fired in details.items():
+
+            if fired:
+
+                rule_counter[
+                    rule_name
+                ] += 1
+
+
+        # ----------------------------------------------------
+        # First flow diagnostics
+        # ----------------------------------------------------
+
+        if row_index == 0:
+
+            first_prediction = prediction
+
+            first_confidence = symbolic_confidence(
+                features
+            )
+
+            first_rule_details = details
+
+
+    # ========================================================
+    # REMOVE UNKNOWN RESULTS
+    # ========================================================
+
+    if "Unknown" in prediction_counter:
+
+        del prediction_counter[
+            "Unknown"
+        ]
+
+
+    # ========================================================
+    # ENSURE NORMAL EXISTS
+    # ========================================================
+
+    if not prediction_counter:
+
+        prediction_counter[
+            "Normal"
+        ] = total_rows
+
+
+    # ========================================================
+    # DETERMINE DOMINANT SYMBOLIC CLASS
+    # ========================================================
+
+    dominant_symbolic_prediction, dominant_symbolic_count = (
+        prediction_counter.most_common(1)[0]
+    )
+
+
+    dominant_symbolic_percentage = (
+        dominant_symbolic_count
+        / total_rows
+        * 100
+    )
+
+
+    # ========================================================
+    # SYMBOLIC PREDICTION DISTRIBUTION
+    # ========================================================
+
+    prediction_distribution = {}
+
+    prediction_counts = {}
+
+    for prediction, count in prediction_counter.items():
+
+        prediction_counts[
+            prediction
+        ] = int(count)
+
+        prediction_distribution[
+            prediction
+        ] = round(
+            count
+            / total_rows
+            * 100,
+            2,
+        )
+
+
+    # ========================================================
+    # RULE DISTRIBUTION
+    # ========================================================
+
+    rule_counts = {}
+
+    rule_distribution = {}
+
+    for rule_name, count in rule_counter.items():
+
+        rule_counts[
+            rule_name
+        ] = int(count)
+
+        rule_distribution[
+            rule_name
+        ] = round(
+            count
+            / total_rows
+            * 100,
+            2,
+        )
+
+
+    # ========================================================
+    # SYMBOLIC EVIDENCE MODEL
+    # ========================================================
+    #
+    # IMPORTANT:
+    #
+    # symbolic_confidence() is based on individual-flow
+    # rule evidence and must NOT be used as the dataset
+    # confidence.
+    #
+    # For a dataset we use symbolic SUPPORT:
+    #
+    #     supporting flows / total flows
+    #
+    # This is deliberately different from statistical
+    # probability.
+    # ========================================================
+
+    symbolic_support = (
+        dominant_symbolic_percentage
+    )
+
+
+    # ========================================================
+    # REQUIRE MEANINGFUL DATASET SUPPORT
+    # ========================================================
+    #
+    # A tiny number of symbolic matches should not override
+    # a dominant neural prediction.
+    #
+    # The symbolic engine may still report the strongest
+    # symbolic pattern, but fusion receives dataset-level
+    # support rather than a misleading 100% single-flow
+    # confidence.
+    # ========================================================
+
+    if (
+        dominant_symbolic_prediction
+        == "Normal"
+    ):
+
+        symbolic_prediction = "Normal"
+
+    else:
+
+        symbolic_prediction = (
+            dominant_symbolic_prediction
+        )
+
+
+    # ========================================================
+    # RETURN SYMBOLIC RESULT
+    # ========================================================
+
+    return {
+
+        "prediction":
+            symbolic_prediction,
+
+        "confidence":
+            round(
+                symbolic_support,
+                2,
             ),
+
+        "support":
+            round(
+                symbolic_support,
+                2,
+            ),
+
+        "prediction_counts":
+            prediction_counts,
+
+        "prediction_distribution":
+            prediction_distribution,
+
+        "rule_counts":
+            rule_counts,
+
+        "rule_distribution":
+            rule_distribution,
+
+        "first_prediction":
+            first_prediction,
+
+        "first_confidence":
+            round(
+                float(first_confidence),
+                2,
+            ),
+
+        "first_rule_details":
+            first_rule_details,
+
+        "rows_evaluated":
+            total_rows,
     }
 
 
@@ -724,21 +1260,27 @@ def run_ml_prediction(df):
 
 def predict_attack(df):
     """
-    Execute the complete Neuro-Symbolic AI pipeline.
+    Execute the complete AEGIS-NSAI pipeline.
 
     Neural prediction
           +
-    Symbolic reasoning
+    Dataset-level symbolic reasoning
           ↓
     Neuro-symbolic fusion
           ↓
     Explanation
           ↓
     Knowledge graph
+
+    Both neural and symbolic components now operate at the
+    dataset level.
+
+    The first-flow result is retained only for diagnostics.
+    It no longer determines the symbolic classification.
     """
 
     # ========================================================
-    # 1. NEURAL NETWORK
+    # 1. MACHINE LEARNING
     # ========================================================
 
     ml_result = run_ml_prediction(
@@ -762,49 +1304,71 @@ def predict_attack(df):
 
 
     # ========================================================
-    # 2. SYMBOLIC REASONING
+    # 2. DATASET-LEVEL SYMBOLIC REASONING
     # ========================================================
 
-    # Current architecture performs symbolic reasoning
-    # using the first uploaded network-flow record.
-
-    first_row = (
+    symbolic_result = run_symbolic_prediction(
         clean_df
-        .iloc[0]
-        .to_dict()
     )
 
 
-    # --------------------------------------------------------
-    # Rule engine prediction
-    # --------------------------------------------------------
-
-    rule_prediction = detect_attack_rules(
-        first_row
-    )
+    rule_prediction = symbolic_result[
+        "prediction"
+    ]
 
 
-    rule_prediction = normalize_attack_name(
-        rule_prediction
-    )
+    rule_confidence = symbolic_result[
+        "confidence"
+    ]
 
 
-    # --------------------------------------------------------
-    # Rule details
-    # --------------------------------------------------------
-
-    rule_details = get_rule_details(
-        first_row
-    )
+    rule_support = symbolic_result[
+        "support"
+    ]
 
 
-    # --------------------------------------------------------
-    # Symbolic confidence/evidence
-    # --------------------------------------------------------
+    rule_details = {
 
-    rule_confidence = symbolic_confidence(
-        first_row
-    )
+        "ddos_rule":
+            symbolic_result[
+                "rule_counts"
+            ].get(
+                "ddos_rule",
+                0,
+            ),
+
+        "dos_rule":
+            symbolic_result[
+                "rule_counts"
+            ].get(
+                "dos_rule",
+                0,
+            ),
+
+        "port_scan_rule":
+            symbolic_result[
+                "rule_counts"
+            ].get(
+                "port_scan_rule",
+                0,
+            ),
+
+        "bruteforce_rule":
+            symbolic_result[
+                "rule_counts"
+            ].get(
+                "bruteforce_rule",
+                0,
+            ),
+
+        "web_attack_rule":
+            symbolic_result[
+                "rule_counts"
+            ].get(
+                "web_attack_rule",
+                0,
+            ),
+    }
 
 
     # ========================================================
@@ -814,6 +1378,8 @@ def predict_attack(df):
     final_prediction = fuse_predictions(
         ml_prediction,
         rule_prediction,
+        ml_confidence,
+        rule_confidence,
     )
 
 
@@ -827,13 +1393,17 @@ def predict_attack(df):
     # ========================================================
 
     explanation = generate_explanation(
-    final_prediction=final_prediction,
-    ml_prediction=ml_prediction,
-    ml_confidence=ml_confidence,
-    rule_prediction=rule_prediction,
-    symbolic_confidence=rule_confidence,
-)
+        final_prediction=final_prediction,
+        ml_prediction=ml_prediction,
+        ml_confidence=ml_confidence,
+        rule_prediction=rule_prediction,
+        symbolic_confidence=rule_confidence,
+    )
 
+
+    # ========================================================
+    # 5. SYMBOLIC EXPLANATION
+    # ========================================================
 
     symbolic_explanation = explain_prediction(
         rule_prediction
@@ -841,7 +1411,7 @@ def predict_attack(df):
 
 
     # ========================================================
-    # 5. KNOWLEDGE GRAPH
+    # 6. KNOWLEDGE GRAPH
     # ========================================================
 
     knowledge_graph = get_attack_context(
@@ -850,7 +1420,7 @@ def predict_attack(df):
 
 
     # ========================================================
-    # 6. FINAL RESPONSE
+    # 7. FINAL RESULT
     # ========================================================
 
     result = {
@@ -865,10 +1435,6 @@ def predict_attack(df):
 
         # ----------------------------------------------------
         # Final confidence
-        #
-        # IMPORTANT:
-        # This currently represents ML confidence.
-        # Symbolic evidence is exposed separately.
         # ----------------------------------------------------
 
         "confidence":
@@ -881,13 +1447,12 @@ def predict_attack(df):
             ),
 
 
-        # ----------------------------------------------------
-        # Neural-network result
-        # ----------------------------------------------------
+        # ====================================================
+        # DATASET-LEVEL ML
+        # ====================================================
 
         "ml_prediction":
             ml_prediction,
-
 
         "ml_confidence":
             round(
@@ -895,32 +1460,116 @@ def predict_attack(df):
                 2,
             ),
 
-
         "ml_class_index":
             ml_result[
                 "class_index"
             ],
 
+        "ml_dominant_count":
+            ml_result[
+                "dominant_count"
+            ],
 
-        # ----------------------------------------------------
-        # Symbolic result
-        # ----------------------------------------------------
+        "ml_dominant_percentage":
+            ml_result[
+                "dominant_percentage"
+            ],
+
+        "ml_class_distribution":
+            ml_result[
+                "class_distribution"
+            ],
+
+        "ml_class_counts":
+            ml_result[
+                "class_counts"
+            ],
+
+
+        # ====================================================
+        # FIRST FLOW ML DIAGNOSTICS
+        # ====================================================
+
+        "first_flow_prediction":
+            ml_result[
+                "first_prediction"
+            ],
+
+        "first_flow_confidence":
+            round(
+                ml_result[
+                    "first_confidence"
+                ] * 100,
+                2,
+            ),
+
+
+        # ====================================================
+        # DATASET-LEVEL SYMBOLIC RESULT
+        # ====================================================
 
         "rule_prediction":
             rule_prediction,
 
-
         "symbolic_confidence":
-            rule_confidence,
+            round(
+                rule_confidence,
+                2,
+            ),
 
+        "symbolic_support":
+            round(
+                rule_support,
+                2,
+            ),
+
+        "symbolic_prediction_counts":
+            symbolic_result[
+                "prediction_counts"
+            ],
+
+        "symbolic_prediction_distribution":
+            symbolic_result[
+                "prediction_distribution"
+            ],
+
+        "symbolic_rule_counts":
+            symbolic_result[
+                "rule_counts"
+            ],
+
+        "symbolic_rule_distribution":
+            symbolic_result[
+                "rule_distribution"
+            ],
 
         "rule_details":
             rule_details,
 
 
-        # ----------------------------------------------------
-        # Explanations
-        # ----------------------------------------------------
+        # ====================================================
+        # FIRST FLOW SYMBOLIC DIAGNOSTICS
+        # ====================================================
+
+        "first_flow_symbolic_prediction":
+            symbolic_result[
+                "first_prediction"
+            ],
+
+        "first_flow_symbolic_confidence":
+            symbolic_result[
+                "first_confidence"
+            ],
+
+        "first_flow_rule_details":
+            symbolic_result[
+                "first_rule_details"
+            ],
+
+
+        # ====================================================
+        # EXPLANATIONS
+        # ====================================================
 
         "message":
             explanation.get(
@@ -928,42 +1577,42 @@ def predict_attack(df):
                 "Prediction generated successfully.",
             ),
 
-
         "symbolic_explanation":
             symbolic_explanation,
 
 
-        # ----------------------------------------------------
-        # Knowledge graph
-        # ----------------------------------------------------
+        # ====================================================
+        # KNOWLEDGE GRAPH
+        # ====================================================
 
         "knowledge_graph":
             knowledge_graph,
 
 
-        # ----------------------------------------------------
-        # System information
-        # ----------------------------------------------------
+        # ====================================================
+        # SYSTEM INFORMATION
+        # ====================================================
 
         "model":
             "AEGIS-NSAI",
 
-
         "architecture":
             "Neuro-Symbolic AI",
-
 
         "input_features":
             INPUT_SIZE,
 
-
         "num_classes":
             NUM_CLASSES,
-
 
         "rows_processed":
             ml_result[
                 "rows_processed"
+            ],
+
+        "symbolic_rows_evaluated":
+            symbolic_result[
+                "rows_evaluated"
             ],
     }
 
@@ -988,59 +1637,61 @@ def predict_attack(df):
 
 
     print(
-        f"Rows Processed      : "
-        f"{ml_result['rows_processed']}"
+        f"Rows Processed          : "
+        f"{ml_result['rows_processed']:,}"
     )
 
 
     print(
-        f"ML Prediction       : "
+        f"ML Prediction           : "
         f"{ml_prediction}"
     )
 
 
     print(
-        f"ML Confidence       : "
+        f"ML Confidence           : "
         f"{ml_confidence * 100:.2f}%"
     )
 
 
     print(
-        f"Symbolic Prediction : "
+        f"ML Dominant Share       : "
+        f"{ml_result['dominant_percentage']:.2f}%"
+    )
+
+
+    print(
+        f"First Flow ML           : "
+        f"{ml_result['first_prediction']}"
+    )
+
+
+    print(
+        f"Symbolic Prediction     : "
         f"{rule_prediction}"
     )
 
 
-    try:
-
-        symbolic_percentage = float(
-            rule_confidence
-        )
-
-        print(
-            f"Symbolic Evidence   : "
-            f"{symbolic_percentage:.2f}%"
-        )
-
-    except (
-        TypeError,
-        ValueError,
-    ):
-
-        print(
-            f"Symbolic Evidence   : "
-            f"{rule_confidence}"
-        )
+    print(
+        f"Symbolic Dataset Support: "
+        f"{rule_support:.2f}%"
+    )
 
 
     print(
-        f"Final Prediction    : "
+        f"Symbolic Rows Evaluated : "
+        f"{symbolic_result['rows_evaluated']:,}"
+    )
+
+
+    print(
+        f"Final Prediction        : "
         f"{final_prediction}"
     )
 
 
     print(
-        f"Knowledge Graph     : "
+        f"Knowledge Graph         : "
         f"{knowledge_graph}"
     )
 

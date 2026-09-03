@@ -3,7 +3,7 @@ import { FaShieldAlt, FaCheckCircle } from "react-icons/fa";
 function ThreatRecommendation({ prediction }) {
   const recommendations = {
     PortScan: {
-      priority: "Medium",
+      priority: "High",
       actions: [
         "Monitor suspicious IP addresses",
         "Close unnecessary open ports",

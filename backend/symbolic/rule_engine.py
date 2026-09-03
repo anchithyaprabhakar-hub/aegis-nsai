@@ -67,7 +67,8 @@ ATTACK_EXPLANATIONS = {
 
     "PortScan":
         "Network behaviour indicates possible scanning "
-        "activity.",
+        "activity characterized by short flows, small "
+        "packet exchanges, and limited response traffic.",
 
     "Bot":
         "Traffic characteristics indicate possible "
@@ -78,7 +79,7 @@ ATTACK_EXPLANATIONS = {
         "a possible brute-force attack.",
 
     "SSH-Patator":
-        "Repeated SSH authentication attempts indicate "
+        "Repeated SSH authentication behaviour indicates "
         "a possible brute-force attack.",
 
     "Heartbleed":
@@ -176,18 +177,24 @@ def rule_port_scan(features):
     """
     Detect possible port-scanning behaviour.
 
-    A single flow cannot prove a port scan because CIC-IDS2017
-    flow records do not directly provide the number of distinct
-    destination ports scanned by a host.
+    Important design decision:
 
-    Therefore this rule requires several supporting indicators.
+    CIC-IDS2017 PortScan flows do not consistently expose
+    SYN activity through the selected SYN Flag Count feature.
 
-    Evidence:
+    Therefore SYN activity is NOT required for this rule.
 
-    - Very short flow
-    - Very small packet exchange
-    - TCP SYN activity
-    - No substantial response traffic
+    The rule instead uses the indicators that were empirically
+    observed in the PortScan dataset:
+
+        1. Short flow
+        2. Small packet exchange
+        3. Limited response traffic
+
+    A single flow cannot prove a complete port scan. This rule
+    therefore represents flow-level scanning evidence only.
+
+    Returns True when all three independent indicators agree.
     """
 
     flow_duration = get_feature(
@@ -205,45 +212,46 @@ def rule_port_scan(features):
         "Total Backward Packets"
     )
 
-    syn_flags = get_feature(
-        features,
-        "SYN Flag Count"
-    )
-
     ack_flags = get_feature(
         features,
         "ACK Flag Count"
     )
 
-    # Strong scanning-like flow characteristics.
+    # --------------------------------------------------------
+    # Indicator 1: Short flow
+    # --------------------------------------------------------
 
     short_flow = (
         flow_duration <= 100000
     )
 
+    # --------------------------------------------------------
+    # Indicator 2: Small packet exchange
+    # --------------------------------------------------------
+
     small_exchange = (
         total_fwd_packets <= 4
-        and total_bwd_packets <= 2
+        and
+        total_bwd_packets <= 2
     )
 
-    syn_activity = (
-        syn_flags >= 1
-    )
+    # --------------------------------------------------------
+    # Indicator 3: Limited response
+    # --------------------------------------------------------
 
     limited_response = (
         total_bwd_packets <= 1
-        and ack_flags <= 1
+        and
+        ack_flags <= 1
     )
 
     evidence_count = sum([
         short_flow,
         small_exchange,
-        syn_activity,
         limited_response,
     ])
 
-    # Require multiple independent indicators.
-
+    # All three indicators are required.
     return evidence_count >= 3
 
 
@@ -255,8 +263,7 @@ def rule_ddos(features):
     """
     Detect strong high-volume DDoS-like characteristics.
 
-    A single high packet-rate or byte-rate measurement is
-    insufficient. Multiple traffic-volume indicators are
+    Multiple independent traffic-volume indicators are
     required before the symbolic rule fires.
     """
 
@@ -306,8 +313,6 @@ def rule_ddos(features):
         total_packets > 500
     )
 
-    # Multiple indicators must support the classification.
-
     evidence_count = sum([
         high_packet_volume,
         very_high_packet_rate,
@@ -315,8 +320,7 @@ def rule_ddos(features):
         traffic_volume,
     ])
 
-    # Additional consistency check.
-
+    # Reject obviously invalid traffic records.
     if (
         packet_length_mean <= 0
         and evidence_count < 3
@@ -392,16 +396,20 @@ def rule_bruteforce(features):
     """
     Detect authentication-oriented traffic.
 
-    This is supporting evidence only.
+    IMPORTANT:
 
-    Common CIC-IDS2017 authentication ports:
+    Port 21 or 22 alone does NOT indicate brute force.
 
-        21 -> FTP
-        22 -> SSH
+    A normal SSH/FTP connection can legitimately use these
+    ports. Therefore the rule requires:
 
-    Multiple packets are required so that an ordinary
-    single connection is not immediately classified
-    as brute-force behaviour.
+        1. Authentication service port
+        2. Repeated forward packets
+        3. Multiple response packets
+        4. Meaningful packet exchange
+
+    This remains flow-level supporting evidence and should
+    ultimately be combined across multiple flows.
     """
 
     destination_port = get_feature(
@@ -431,12 +439,16 @@ def rule_bruteforce(features):
         }
     )
 
+    # Increased threshold to reduce false positives from
+    # ordinary SSH/FTP connections.
     repeated_forward_traffic = (
-        total_fwd_packets >= 8
+        total_fwd_packets >= 12
     )
 
-    response_traffic = (
-        total_bwd_packets >= 1
+    # Require multiple response packets rather than a single
+    # response packet.
+    repeated_response_traffic = (
+        total_bwd_packets >= 3
     )
 
     active_flow = (
@@ -446,7 +458,7 @@ def rule_bruteforce(features):
     evidence_count = sum([
         authentication_port,
         repeated_forward_traffic,
-        response_traffic,
+        repeated_response_traffic,
         active_flow,
     ])
 
@@ -463,8 +475,8 @@ def rule_web_attack(features):
 
     This rule identifies supporting evidence only.
 
-    Ports commonly associated with HTTP traffic are checked
-    together with sustained forward traffic.
+    HTTP/HTTPS ports are combined with sustained traffic and
+    bidirectional communication.
     """
 
     destination_port = get_feature(
@@ -530,6 +542,11 @@ def _rule_scores(features):
 
     They represent how strongly the observed flow matches
     the deterministic conditions of each symbolic rule.
+
+    IMPORTANT:
+
+    The indicators used here are deliberately aligned with
+    the corresponding rule functions above.
     """
 
     scores = {}
@@ -562,6 +579,17 @@ def _rule_scores(features):
             "Flow Bytes/s"
         ) > 1_000_000,
 
+        (
+            get_feature(
+                features,
+                "Total Fwd Packets"
+            )
+            +
+            get_feature(
+                features,
+                "Total Backward Packets"
+            )
+        ) > 500,
     ]
 
     scores["DDoS"] = (
@@ -598,7 +626,6 @@ def _rule_scores(features):
             features,
             "Flow Packets/s"
         ) > 5000,
-
     ]
 
     scores["DoS"] = (
@@ -614,11 +641,13 @@ def _rule_scores(features):
 
     port_scan_indicators = [
 
+        # Short flow
         get_feature(
             features,
             "Flow Duration"
         ) <= 100000,
 
+        # Small packet exchange
         (
             get_feature(
                 features,
@@ -631,11 +660,7 @@ def _rule_scores(features):
             ) <= 2
         ),
 
-        get_feature(
-            features,
-            "SYN Flag Count"
-        ) >= 1,
-
+        # Limited response
         (
             get_feature(
                 features,
@@ -662,6 +687,7 @@ def _rule_scores(features):
 
     bruteforce_indicators = [
 
+        # Authentication service
         get_feature(
             features,
             "Destination Port"
@@ -670,21 +696,23 @@ def _rule_scores(features):
             22,
         },
 
+        # Repeated forward traffic
         get_feature(
             features,
             "Total Fwd Packets"
-        ) >= 8,
+        ) >= 12,
 
+        # Multiple responses
         get_feature(
             features,
             "Total Backward Packets"
-        ) >= 1,
+        ) >= 3,
 
+        # Active connection
         get_feature(
             features,
             "Flow Duration"
         ) > 0,
-
     ]
 
     scores["BruteForce"] = (
@@ -724,7 +752,6 @@ def _rule_scores(features):
             features,
             "Flow Duration"
         ) > 0,
-
     ]
 
     scores["WebAttack"] = (
@@ -748,9 +775,6 @@ def detect_attack_rules(features):
     The symbolic engine evaluates several independent
     evidence sources before selecting a classification.
 
-    Priority is used only when multiple rules have comparable
-    evidence.
-
     Returns:
 
         DDoS
@@ -763,6 +787,7 @@ def detect_attack_rules(features):
     """
 
     if features is None:
+
         return "Normal"
 
 
@@ -930,7 +955,23 @@ def get_rule_details(features):
     useful for explainability.
     """
 
-    details = {
+    if features is None:
+
+        return {
+
+            "ddos_rule": False,
+
+            "dos_rule": False,
+
+            "port_scan_rule": False,
+
+            "bruteforce_rule": False,
+
+            "web_attack_rule": False,
+        }
+
+
+    return {
 
         "ddos_rule":
             rule_ddos(
@@ -957,9 +998,6 @@ def get_rule_details(features):
                 features
             ),
     }
-
-
-    return details
 
 
 # ============================================================
@@ -1017,7 +1055,6 @@ def symbolic_confidence(features):
 
         "Web Attack":
             "WebAttack",
-
     }
 
 
@@ -1079,6 +1116,7 @@ if __name__ == "__main__":
 
         "ACK Flag Count": 5,
 
+        "Packet Length Mean": 500,
     }
 
 
@@ -1105,12 +1143,11 @@ if __name__ == "__main__":
         "SYN Flag Count": 1,
 
         "ACK Flag Count": 1,
-
     }
 
 
     # --------------------------------------------------------
-    # Port scan sample
+    # PortScan sample
     # --------------------------------------------------------
 
     port_scan_sample = {
@@ -1127,10 +1164,63 @@ if __name__ == "__main__":
 
         "Flow Bytes/s": 100,
 
-        "SYN Flag Count": 1,
+        "SYN Flag Count": 0,
 
         "ACK Flag Count": 0,
 
+        "Packet Length Mean": 50,
+    }
+
+
+    # --------------------------------------------------------
+    # SSH normal-like sample
+    # --------------------------------------------------------
+
+    ssh_normal_sample = {
+
+        "Destination Port": 22,
+
+        "Flow Duration": 500000,
+
+        "Total Fwd Packets": 5,
+
+        "Total Backward Packets": 5,
+
+        "Flow Packets/s": 20,
+
+        "Flow Bytes/s": 10000,
+
+        "SYN Flag Count": 1,
+
+        "ACK Flag Count": 5,
+
+        "Packet Length Mean": 500,
+    }
+
+
+    # --------------------------------------------------------
+    # SSH brute-force-like sample
+    # --------------------------------------------------------
+
+    ssh_bruteforce_sample = {
+
+        "Destination Port": 22,
+
+        "Flow Duration": 100000,
+
+        "Total Fwd Packets": 20,
+
+        "Total Backward Packets": 5,
+
+        "Flow Packets/s": 100,
+
+        "Flow Bytes/s": 50000,
+
+        "SYN Flag Count": 1,
+
+        "ACK Flag Count": 2,
+
+        "Packet Length Mean": 200,
     }
 
 
@@ -1144,6 +1234,12 @@ if __name__ == "__main__":
 
         "PortScan sample":
             port_scan_sample,
+
+        "SSH normal-like sample":
+            ssh_normal_sample,
+
+        "SSH brute-force-like sample":
+            ssh_bruteforce_sample,
     }
 
 
@@ -1189,5 +1285,7 @@ if __name__ == "__main__":
             f"{details}"
         )
 
+
     print()
+
     print("=" * 70)
