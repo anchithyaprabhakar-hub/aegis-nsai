@@ -24,24 +24,33 @@ function DownloadReport({ data }) {
 
     doc.setFontSize(13);
     doc.setFont("helvetica", "normal");
-    doc.text("Neuro-Symbolic Intrusion Detection Report", 14, 30);
+    doc.text(
+      "Neuro-Symbolic Intrusion Detection Report",
+      14,
+      30
+    );
+
+    doc.setFontSize(10);
+    doc.text(
+      "CSV Network Analysis",
+      14,
+      36
+    );
 
     // ==========================
     // Metadata
     // ==========================
 
-    doc.setFontSize(10);
-
     doc.text(
       `Generated : ${new Date().toLocaleString()}`,
       14,
-      40
+      44
     );
 
     doc.text(
       `Report ID : AEG-${Date.now()}`,
       130,
-      40
+      44
     );
 
     // ==========================
@@ -49,12 +58,19 @@ function DownloadReport({ data }) {
     // ==========================
 
     autoTable(doc, {
-      startY: 48,
+      startY: 52,
       head: [["Field", "Value"]],
       body: [
-        ["Prediction", data.prediction],
+        ["Final Prediction", data.prediction],
         ["Confidence", `${confidence}%`],
         ["Threat Level", threat],
+        ["ML Prediction", data.ml_prediction || data.mlPrediction || "N/A"],
+        [
+          "Symbolic Prediction",
+          data.symbolic_prediction ||
+            data.symbolicPrediction ||
+            "N/A",
+        ],
       ],
       headStyles: {
         fillColor: [34, 197, 94],
@@ -76,17 +92,20 @@ function DownloadReport({ data }) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(11);
 
-    doc.text(
-      doc.splitTextToSize(data.message, 180),
-      14,
-      y
+    const message = data.message || "No explanation available.";
+
+    const explanationLines = doc.splitTextToSize(
+      message,
+      180
     );
+
+    doc.text(explanationLines, 14, y);
+
+    y += explanationLines.length * 6 + 12;
 
     // ==========================
     // Knowledge Graph
     // ==========================
-
-    y += 28;
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(16);
@@ -98,7 +117,10 @@ function DownloadReport({ data }) {
     autoTable(doc, {
       startY: y,
       head: [["Related Indicators"]],
-      body: (data.knowledge_graph || []).map(item => [item]),
+      body:
+        (data.knowledge_graph || []).length > 0
+          ? data.knowledge_graph.map((item) => [item])
+          : [["No related indicators available"]],
       headStyles: {
         fillColor: [30, 30, 30],
       },
