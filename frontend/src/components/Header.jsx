@@ -156,7 +156,7 @@ function Header({ analysisCount }) {
             fontWeight: "600",
           }}
         >
-          Version 1.0 • AI Detection Dashboard
+          Version 1.0 • CSV Network Analysis
         </div>
 
       </header>
