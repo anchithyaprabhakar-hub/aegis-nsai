@@ -8,9 +8,20 @@ import {
 function AttackAnalytics({ logs }) {
   const total = logs.length;
 
-  const highRisk = logs.filter(
-    (log) => Number(log.confidence) >= 70
-  ).length;
+  const highRisk = logs.filter((log) => {
+    const prediction = String(log.prediction || "")
+      .trim()
+      .toLowerCase();
+
+    const isBenign =
+      prediction === "normal" ||
+      prediction === "benign";
+
+    return (
+      !isBenign &&
+      Number(log.confidence) >= 70
+    );
+  }).length;
 
   const averageConfidence =
     total === 0
@@ -32,7 +43,6 @@ function AttackAnalytics({ logs }) {
       </h3>
 
       <div style={{ marginTop: "25px" }}>
-
         <p>
           <FaShieldAlt color="#38bdf8" />{" "}
           <strong>Total Analyses:</strong> {total}
@@ -53,7 +63,6 @@ function AttackAnalytics({ logs }) {
           <strong>Latest Attack:</strong>{" "}
           {latestAttack}
         </p>
-
       </div>
     </div>
   );
