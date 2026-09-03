@@ -17,19 +17,15 @@ function AttackChart({ logs }) {
   const attackCounts = {};
 
   logs.forEach((log) => {
-    const prediction = log.prediction || "Unknown";
-
-    attackCounts[prediction] =
-      (attackCounts[prediction] || 0) + 1;
+    attackCounts[log.prediction] =
+      (attackCounts[log.prediction] || 0) + 1;
   });
 
   const data = {
     labels: Object.keys(attackCounts),
-
     datasets: [
       {
         data: Object.values(attackCounts),
-
         backgroundColor: [
           "#ef4444",
           "#3b82f6",
@@ -38,9 +34,7 @@ function AttackChart({ logs }) {
           "#a855f7",
           "#06b6d4",
         ],
-
         borderColor: "#171717",
-
         borderWidth: 2,
       },
     ],
@@ -48,31 +42,15 @@ function AttackChart({ logs }) {
 
   const options = {
     responsive: true,
-
     maintainAspectRatio: false,
 
     plugins: {
       legend: {
         position: "bottom",
-
         labels: {
           color: "#ffffff",
-
           font: {
             size: 14,
-          },
-
-          padding: 18,
-        },
-      },
-
-      tooltip: {
-        callbacks: {
-          label: (context) => {
-            const label = context.label || "";
-            const value = context.raw || 0;
-
-            return `${label}: ${value}`;
           },
         },
       },
@@ -93,10 +71,8 @@ function AttackChart({ logs }) {
       ) : (
         <div
           style={{
+            height: "420px",
             position: "relative",
-            width: "100%",
-            height: "380px",
-            marginTop: "20px",
           }}
         >
           <Pie
