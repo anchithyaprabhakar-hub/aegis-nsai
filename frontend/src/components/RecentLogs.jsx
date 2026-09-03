@@ -1,3 +1,4 @@
+cat > src/components/RecentLogs.jsx <<'EOF'
 import {
   FaClock,
   FaShieldAlt,
@@ -120,7 +121,9 @@ function RecentLogs({ logs }) {
                 >
                   <FaClock color="#9ca3af" />
 
-                  <span>{log.time}</span>
+                  <span>
+                    Detected: {log.time}
+                  </span>
                 </div>
 
                 <div
@@ -178,3 +181,4 @@ function RecentLogs({ logs }) {
 }
 
 export default RecentLogs;
+EOF
