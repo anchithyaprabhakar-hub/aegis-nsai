@@ -1,4 +1,3 @@
-cat > src/components/RecentLogs.jsx <<'EOF'
 import {
   FaClock,
   FaShieldAlt,
@@ -6,25 +5,39 @@ import {
   FaFingerprint,
 } from "react-icons/fa";
 
-function RecentLogs({ logs }) {
+function RecentLogs({ logs = [] }) {
+  const safeLogs = Array.isArray(logs) ? logs : [];
+
   const getSeverity = (confidence) => {
-    if (confidence >= 80)
+    const value = Number(confidence);
+
+    if (!Number.isFinite(value)) {
+      return {
+        label: "Low",
+        color: "#22c55e",
+      };
+    }
+
+    if (value >= 80) {
       return {
         label: "Critical",
         color: "#ef4444",
       };
+    }
 
-    if (confidence >= 60)
+    if (value >= 60) {
       return {
         label: "High",
         color: "#f97316",
       };
+    }
 
-    if (confidence >= 30)
+    if (value >= 30) {
       return {
         label: "Medium",
         color: "#facc15",
       };
+    }
 
     return {
       label: "Low",
@@ -56,11 +69,11 @@ function RecentLogs({ logs }) {
             fontWeight: "700",
           }}
         >
-          {logs.length} Total
+          {safeLogs.length} Total
         </span>
       </div>
 
-      {logs.length === 0 ? (
+      {safeLogs.length === 0 ? (
         <div
           style={{
             textAlign: "center",
@@ -84,14 +97,17 @@ function RecentLogs({ logs }) {
         </div>
       ) : (
         <div className="logs">
-          {logs.map((log, index) => {
-            const severity = getSeverity(
-              Number(log.confidence)
-            );
+          {safeLogs.map((log, index) => {
+            const confidence = Number(log?.confidence);
+            const safeConfidence = Number.isFinite(confidence)
+              ? confidence
+              : 0;
+
+            const severity = getSeverity(safeConfidence);
 
             return (
               <div
-                key={index}
+                key={`${log?.time || "detection"}-${index}`}
                 className={`log-row ${
                   index === 0 ? "latest-row" : ""
                 }`}
@@ -122,7 +138,7 @@ function RecentLogs({ logs }) {
                   <FaClock color="#9ca3af" />
 
                   <span>
-                    Detected: {log.time}
+                    Detected: {log?.time || "Unknown"}
                   </span>
                 </div>
 
@@ -135,7 +151,9 @@ function RecentLogs({ logs }) {
                 >
                   <FaShieldAlt color="#38bdf8" />
 
-                  <span>{log.prediction}</span>
+                  <span>
+                    {log?.prediction || "Unknown"}
+                  </span>
                 </div>
 
                 <div
@@ -148,7 +166,7 @@ function RecentLogs({ logs }) {
                   <FaBullseye color="#facc15" />
 
                   <span>
-                    {Number(log.confidence).toFixed(2)}%
+                    {safeConfidence.toFixed(2)}%
                   </span>
                 </div>
 
@@ -181,4 +199,3 @@ function RecentLogs({ logs }) {
 }
 
 export default RecentLogs;
-EOF
