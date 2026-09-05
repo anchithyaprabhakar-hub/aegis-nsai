@@ -29,15 +29,30 @@ function App() {
   const [logs, setLogs] = useState([]);
   const [analysisCount, setAnalysisCount] = useState(0);
 
+  // ============================================================
+  // HANDLE COMPLETED ANALYSIS
+  // ============================================================
+
   const handlePrediction = (result) => {
-    setData(result);
+    const analyzedAt = new Date().toISOString();
+
+    const analysisResult = {
+      ...result,
+      analyzedAt,
+    };
+
+    setData(analysisResult);
 
     setAnalysisCount((count) => count + 1);
 
     const newLog = {
+      id: `DET-${String(analysisCount + 1).padStart(3, "0")}`,
       prediction: result.prediction,
       confidence: result.confidence,
-      time: new Date().toLocaleTimeString(),
+      filename:
+        result.filename ||
+        "Uploaded network dataset",
+      time: new Date(analyzedAt).toLocaleTimeString(),
     };
 
     setLogs((previousLogs) => [
@@ -45,6 +60,10 @@ function App() {
       ...previousLogs.slice(0, 9),
     ]);
   };
+
+  // ============================================================
+  // THREAT LEVEL
+  // ============================================================
 
   let threatLevel = "Low";
 
@@ -58,6 +77,10 @@ function App() {
     }
   }
 
+  // ============================================================
+  // ATTACK DESCRIPTIONS
+  // ============================================================
+
   const attackDescriptions = {
     PortScan:
       "Attempts to discover open ports and running services on the target system.",
@@ -68,16 +91,90 @@ function App() {
     BruteForce:
       "Repeated login attempts to gain unauthorized system access.",
 
+    "Web Attack - Brute Force":
+      "Attempts to gain unauthorized access through repeated web authentication requests.",
+
+    "Web Attack - Sql Injection":
+      "Attempts to manipulate database queries through malicious SQL input.",
+
+    "Web Attack - XSS":
+      "Attempts to inject malicious client-side scripts into web content.",
+
+    "DoS GoldenEye":
+      "Attempts to exhaust server resources through repeated HTTP requests.",
+
+    "DoS Hulk":
+      "Generates large volumes of HTTP traffic to exhaust target resources.",
+
+    "DoS Slowhttptest":
+      "Uses slow HTTP request techniques to consume server connections.",
+
+    "DoS slowloris":
+      "Maintains many partial HTTP connections to exhaust server resources.",
+
+    "FTP-Patator":
+      "Attempts repeated authentication requests against an FTP service.",
+
+    "SSH-Patator":
+      "Attempts repeated authentication requests against an SSH service.",
+
+    Bot:
+      "Network behaviour associated with automated or bot-controlled activity.",
+
+    Heartbleed:
+      "Traffic associated with attempts to exploit the Heartbleed vulnerability.",
+
+    Infiltration:
+      "Network behaviour associated with unauthorized system infiltration.",
+
+    Normal:
+      "Normal network activity with no malicious behaviour detected.",
+
     Benign:
       "Normal network activity with no malicious behaviour detected.",
   };
 
+  // ============================================================
+  // CURRENT ANALYSIS TIME
+  // ============================================================
+
+  const detectionTime = data?.analyzedAt
+    ? new Date(data.analyzedAt).toLocaleTimeString()
+    : "N/A";
+
+  // ============================================================
+  // CURRENT DATASET
+  // ============================================================
+
+  const currentFilename =
+    data?.filename ||
+    "Uploaded network dataset";
+
+  const rowsProcessed =
+    Number(data?.rows_processed) || 0;
+
   return (
     <div className="container">
 
-      <Header analysisCount={analysisCount} />
+      {/* ======================================================
+          HEADER
+      ====================================================== */}
 
-      <FileUpload onPrediction={handlePrediction} />
+      <Header
+        analysisCount={analysisCount}
+      />
+
+      {/* ======================================================
+          FILE UPLOAD
+      ====================================================== */}
+
+      <FileUpload
+        onPrediction={handlePrediction}
+      />
+
+      {/* ======================================================
+          EMPTY STATE
+      ====================================================== */}
 
       {!data ? (
         <div className="loading">
@@ -86,9 +183,48 @@ function App() {
       ) : (
         <>
 
-          {/* =====================================================
+          {/* ==================================================
+              CURRENT ANALYSIS
+          ================================================== */}
+
+          <div
+            className="info-card"
+            style={{
+              textAlign: "center",
+              marginTop: "18px",
+            }}
+          >
+            <h3>Current Analysis</h3>
+
+            <p
+              style={{
+                marginTop: "12px",
+                color: "#38bdf8",
+                fontWeight: "600",
+                wordBreak: "break-word",
+              }}
+            >
+              {currentFilename}
+            </p>
+
+            <p
+              style={{
+                marginTop: "8px",
+                color: "#9ca3af",
+                fontSize: "14px",
+              }}
+            >
+              {rowsProcessed > 0
+                ? `${rowsProcessed.toLocaleString()} network-flow rows analyzed`
+                : "Dataset-level network-flow analysis"}
+            </p>
+          </div>
+
+          <br />
+
+          {/* ==================================================
               SUMMARY CARDS
-          ===================================================== */}
+          ================================================== */}
 
           <DashboardGrid>
 
@@ -119,7 +255,7 @@ function App() {
             <SummaryCard
               icon={<FaClock />}
               title="Detection Time"
-              value={new Date().toLocaleTimeString()}
+              value={detectionTime}
             />
 
             <SummaryCard
@@ -132,9 +268,9 @@ function App() {
 
           <br />
 
-          {/* =====================================================
+          {/* ==================================================
               ANALYSIS DASHBOARD
-          ===================================================== */}
+          ================================================== */}
 
           <DashboardGrid>
 
@@ -157,9 +293,9 @@ function App() {
 
           <br />
 
-          {/* =====================================================
+          {/* ==================================================
               KNOWLEDGE GRAPH
-          ===================================================== */}
+          ================================================== */}
 
           {data.knowledge_graph && (
             <>
@@ -171,9 +307,9 @@ function App() {
             </>
           )}
 
-          {/* =====================================================
+          {/* ==================================================
               ATTACK DESCRIPTION
-          ===================================================== */}
+          ================================================== */}
 
           <div
             className="info-card"
@@ -199,9 +335,9 @@ function App() {
 
           <br />
 
-          {/* =====================================================
+          {/* ==================================================
               RECOMMENDATIONS
-          ===================================================== */}
+          ================================================== */}
 
           <ThreatRecommendation
             prediction={data.prediction}
@@ -209,9 +345,9 @@ function App() {
 
           <br />
 
-          {/* =====================================================
+          {/* ==================================================
               PDF REPORT
-          ===================================================== */}
+          ================================================== */}
 
           <DownloadReport
             data={data}
@@ -219,9 +355,9 @@ function App() {
 
           <br />
 
-          {/* =====================================================
+          {/* ==================================================
               ATTACK ANALYTICS SUMMARY
-          ===================================================== */}
+          ================================================== */}
 
           <AttackAnalytics
             logs={logs}
@@ -229,9 +365,9 @@ function App() {
 
           <br />
 
-          {/* =====================================================
+          {/* ==================================================
               ATTACK DISTRIBUTION
-          ===================================================== */}
+          ================================================== */}
 
           <AttackChart
             logs={logs}
@@ -239,9 +375,9 @@ function App() {
 
           <br />
 
-          {/* =====================================================
+          {/* ==================================================
               CONFIDENCE HISTORY
-          ===================================================== */}
+          ================================================== */}
 
           <ConfidenceChart
             logs={logs}
@@ -249,9 +385,9 @@ function App() {
 
           <br />
 
-          {/* =====================================================
+          {/* ==================================================
               DETECTION HISTORY
-          ===================================================== */}
+          ================================================== */}
 
           <RecentLogs
             logs={logs}
