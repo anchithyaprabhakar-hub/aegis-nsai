@@ -1,48 +1,249 @@
-function ExplanationCard({ prediction, confidence, message }) {
+import {
+  FaBrain,
+  FaProjectDiagram,
+  FaInfoCircle,
+} from "react-icons/fa";
 
-  const getExplanation = () => {
+function ExplanationCard({
+  prediction,
+  confidence,
+  message,
+  symbolicConfidence,
+  symbolicSupport,
+  symbolicExplanation,
+}) {
+  const mlConfidence = Number(confidence) || 0;
+  const symbolicEvidence =
+    Number(symbolicSupport ?? symbolicConfidence) || 0;
 
-    if (prediction === "PortScan") {
-      return `The uploaded network traffic exhibits characteristics commonly associated with a Port Scan attack. The AI model detected reconnaissance behaviour used to identify open ports and available network services. Confidence is ${confidence.toFixed(2)}%, indicating ${
-        confidence >= 70
-          ? "strong evidence of malicious activity."
-          : confidence >= 40
-          ? "moderate evidence. Further investigation is recommended."
-          : "low confidence. Additional monitoring is recommended before confirming the attack."
-      }`;
+  const getDecisionSummary = () => {
+    if (
+      symbolicEvidence > 0 &&
+      prediction !== "Normal" &&
+      prediction !== "Benign"
+    ) {
+      return "The neural network identified the dominant attack pattern, while symbolic rules provided supporting behavioural evidence.";
     }
 
-    if (prediction === "DDoS") {
-      return `The network traffic shows patterns consistent with a Distributed Denial-of-Service (DDoS) attack. This type of attack attempts to overwhelm a target with excessive requests, reducing or preventing service availability. Confidence is ${confidence.toFixed(2)}%.`;
+    if (
+      prediction === "Normal" ||
+      prediction === "Benign"
+    ) {
+      return "The uploaded traffic was classified as normal network behaviour. Symbolic rules did not provide sufficient attack support to override the neural prediction.";
     }
 
-    if (prediction === "BruteForce") {
-      return `The AI model detected repeated authentication attempts that resemble a Brute Force attack. This behaviour may indicate an attempt to gain unauthorized access through repeated login attempts. Confidence is ${confidence.toFixed(2)}%.`;
-    }
-
-    if (prediction === "Benign") {
-      return `No significant malicious activity was detected. The uploaded traffic appears to represent normal network behaviour.`;
-    }
-
-    return message;
+    return "The final classification is based on the combined neural prediction and symbolic reasoning components.";
   };
 
   return (
     <div
       className="info-card"
-      style={{ gridColumn: "1 / span 2" }}
+      style={{
+        gridColumn: "1 / span 2",
+      }}
     >
-      <h3>AI Explanation</h3>
+      <h3>
+        <FaBrain /> AI Explanation
+      </h3>
 
-      <p
+      {/* ======================================================
+          DETECTION SUMMARY
+      ====================================================== */}
+
+      <div
         style={{
-          lineHeight: "1.8",
-          color: "#d1d5db",
-          fontSize: "17px",
+          marginTop: "22px",
+          padding: "16px",
+          borderRadius: "12px",
+          background: "#111111",
+          border: "1px solid #2c2c2c",
         }}
       >
-        {getExplanation()}
-      </p>
+        <p
+          style={{
+            margin: 0,
+            fontSize: "16px",
+            lineHeight: "1.7",
+          }}
+        >
+          <strong>Final Detection:</strong>{" "}
+          <span
+            style={{
+              color: "#38bdf8",
+              fontWeight: "700",
+            }}
+          >
+            {prediction || "Unknown"}
+          </span>
+        </p>
+
+        <p
+          style={{
+            marginTop: "10px",
+            marginBottom: 0,
+            color: "#d1d5db",
+            lineHeight: "1.7",
+          }}
+        >
+          {getDecisionSummary()}
+        </p>
+      </div>
+
+      {/* ======================================================
+          NEURO-SYMBOLIC EVIDENCE
+      ====================================================== */}
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns:
+            "repeat(auto-fit, minmax(190px, 1fr))",
+          gap: "12px",
+          marginTop: "16px",
+        }}
+      >
+        <div
+          style={{
+            padding: "14px",
+            borderRadius: "10px",
+            background: "#151515",
+            border: "1px solid #2c2c2c",
+          }}
+        >
+          <FaBrain
+            style={{
+              marginRight: "8px",
+              color: "#38bdf8",
+            }}
+          />
+
+          <strong>Neural Confidence</strong>
+
+          <div
+            style={{
+              marginTop: "8px",
+              fontSize: "20px",
+              fontWeight: "700",
+            }}
+          >
+            {mlConfidence.toFixed(2)}%
+          </div>
+        </div>
+
+        <div
+          style={{
+            padding: "14px",
+            borderRadius: "10px",
+            background: "#151515",
+            border: "1px solid #2c2c2c",
+          }}
+        >
+          <FaProjectDiagram
+            style={{
+              marginRight: "8px",
+              color: "#facc15",
+            }}
+          />
+
+          <strong>Symbolic Evidence</strong>
+
+          <div
+            style={{
+              marginTop: "8px",
+              fontSize: "20px",
+              fontWeight: "700",
+            }}
+          >
+            {symbolicEvidence.toFixed(2)}%
+          </div>
+        </div>
+      </div>
+
+      {/* ======================================================
+          SYMBOLIC EXPLANATION
+      ====================================================== */}
+
+      {symbolicExplanation && (
+        <div
+          style={{
+            marginTop: "18px",
+            padding: "16px",
+            borderRadius: "12px",
+            background: "#111111",
+            border: "1px solid #2c2c2c",
+          }}
+        >
+          <p
+            style={{
+              margin: 0,
+              fontWeight: "700",
+            }}
+          >
+            <FaProjectDiagram
+              style={{
+                marginRight: "8px",
+                color: "#facc15",
+              }}
+            />
+            Symbolic Reasoning
+          </p>
+
+          <p
+            style={{
+              marginTop: "10px",
+              marginBottom: 0,
+              lineHeight: "1.8",
+              color: "#d1d5db",
+              fontSize: "16px",
+            }}
+          >
+            {symbolicExplanation}
+          </p>
+        </div>
+      )}
+
+      {/* ======================================================
+          MODEL MESSAGE
+      ====================================================== */}
+
+      {message && (
+        <div
+          style={{
+            marginTop: "18px",
+            padding: "16px",
+            borderRadius: "12px",
+            background: "#111111",
+            border: "1px solid #2c2c2c",
+          }}
+        >
+          <p
+            style={{
+              margin: 0,
+              fontWeight: "700",
+            }}
+          >
+            <FaInfoCircle
+              style={{
+                marginRight: "8px",
+                color: "#38bdf8",
+              }}
+            />
+            Neuro-Symbolic Decision
+          </p>
+
+          <p
+            style={{
+              marginTop: "10px",
+              marginBottom: 0,
+              lineHeight: "1.8",
+              color: "#d1d5db",
+              fontSize: "16px",
+            }}
+          >
+            {message}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
