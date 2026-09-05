@@ -328,7 +328,8 @@ async def predict(
     try:
 
         result = predict_attack(
-            df
+            df,
+            filename=file.filename.strip(),
         )
 
         return result

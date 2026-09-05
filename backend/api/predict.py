@@ -1258,7 +1258,7 @@ def run_symbolic_prediction(clean_df):
 # COMPLETE AEGIS-NSAI PIPELINE
 # ============================================================
 
-def predict_attack(df):
+def predict_attack(df, filename=None):
     """
     Execute the complete AEGIS-NSAI pipeline.
 
@@ -1424,6 +1424,16 @@ def predict_attack(df):
     # ========================================================
 
     result = {
+
+        # ----------------------------------------------------
+        # Analysis metadata
+        # ----------------------------------------------------
+
+        "filename":
+            filename or "Uploaded network dataset",
+
+        "analysis_type":
+            "Dataset-level network-flow analysis",
 
         # ----------------------------------------------------
         # Final prediction
