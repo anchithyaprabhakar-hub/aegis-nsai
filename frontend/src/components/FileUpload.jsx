@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import {
   FaUpload,
@@ -13,6 +13,9 @@ function FileUpload({ onPrediction }) {
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("Waiting for file");
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const inputRef = useRef(null);
 
   const API_URL = "http://127.0.0.1:8000/predict";
 
@@ -27,8 +30,21 @@ function FileUpload({ onPrediction }) {
       return;
     }
 
+    setErrorMessage("");
+
     if (!selectedFile.name.toLowerCase().endsWith(".csv")) {
-      alert("Please select a CSV file.");
+      setFile(null);
+      setStatus("Upload Failed");
+      setErrorMessage("Please select a CSV file.");
+      event.target.value = "";
+      return;
+    }
+
+    if (selectedFile.size === 0) {
+      setFile(null);
+      setStatus("Upload Failed");
+      setErrorMessage("The selected CSV file is empty.");
+      event.target.value = "";
       return;
     }
 
@@ -47,15 +63,16 @@ function FileUpload({ onPrediction }) {
   // ============================
 
   const handleReset = () => {
-    if (loading) return;
+    if (loading) {
+      return;
+    }
 
     setFile(null);
     setStatus("Waiting for file");
+    setErrorMessage("");
 
-    const input = document.getElementById("csv-upload");
-
-    if (input) {
-      input.value = "";
+    if (inputRef.current) {
+      inputRef.current.value = "";
     }
   };
 
@@ -65,12 +82,14 @@ function FileUpload({ onPrediction }) {
 
   const handleUpload = async () => {
     if (!file) {
-      alert("Please select a CSV file first.");
+      setStatus("Upload Failed");
+      setErrorMessage("Please select a CSV file first.");
       return;
     }
 
     setLoading(true);
     setStatus("Analyzing...");
+    setErrorMessage("");
 
     const formData = new FormData();
     formData.append("file", file);
@@ -93,41 +112,48 @@ function FileUpload({ onPrediction }) {
       console.log("HTTP status:", response.status);
       console.log("HTTP status text:", response.statusText);
 
+      let result = {};
+
+      try {
+        result = await response.json();
+      } catch {
+        result = {};
+      }
+
       // ============================
       // HTTP ERROR
       // ============================
 
       if (!response.ok) {
-        const errorText = await response.text();
+        const backendMessage =
+          result?.detail ||
+          `Backend returned HTTP ${response.status}.`;
 
-        console.error("Backend returned an error:");
-        console.error(errorText);
-
-        throw new Error(
-          `Backend error ${response.status}: ${errorText}`
+        console.error(
+          "AEGIS-NSAI backend error:",
+          backendMessage
         );
+
+        throw new Error(backendMessage);
       }
 
       // ============================
-      // PARSE RESPONSE
+      // VALIDATE RESPONSE
       // ============================
-
-      const result = await response.json();
 
       console.log("=================================");
       console.log("AEGIS-NSAI BACKEND RESULT");
       console.log("=================================");
       console.log(result);
 
-      // ============================
-      // VALIDATE RESPONSE
-      // ============================
-
       if (!result.prediction) {
-        console.error("Unexpected backend response:", result);
+        console.error(
+          "Unexpected backend response:",
+          result
+        );
 
         throw new Error(
-          "Backend response does not contain a prediction."
+          "The backend response did not contain a prediction."
         );
       }
 
@@ -138,8 +164,11 @@ function FileUpload({ onPrediction }) {
       onPrediction(result);
 
       setStatus("Analysis Complete");
+      setErrorMessage("");
 
-      console.log("Analysis completed successfully.");
+      console.log(
+        "Analysis completed successfully."
+      );
     } catch (error) {
       console.error("=================================");
       console.error("AEGIS-NSAI ANALYSIS FAILED");
@@ -150,16 +179,16 @@ function FileUpload({ onPrediction }) {
 
       if (
         error instanceof TypeError &&
-        error.message.includes("fetch")
+        error.message.toLowerCase().includes("fetch")
       ) {
-        alert(
-          "Cannot connect to the AEGIS-NSAI backend.\n\n" +
+        setErrorMessage(
+          "Cannot connect to the AEGIS-NSAI backend. " +
           "Make sure FastAPI is running on port 8000."
         );
       } else {
-        alert(
-          `Analysis failed.\n\n${error.message}\n\n` +
-          "Check the browser Console and backend terminal."
+        setErrorMessage(
+          error.message ||
+            "Analysis failed while processing the uploaded CSV."
         );
       }
     } finally {
@@ -244,10 +273,12 @@ function FileUpload({ onPrediction }) {
       ============================ */}
 
       <input
+        ref={inputRef}
         id="csv-upload"
         type="file"
         accept=".csv,text/csv"
         onChange={handleFileChange}
+        disabled={loading}
         style={{
           display: "none",
         }}
@@ -274,7 +305,9 @@ function FileUpload({ onPrediction }) {
             background: "#ffffff",
             color: "#000000",
             borderRadius: "10px",
-            cursor: loading ? "not-allowed" : "pointer",
+            cursor: loading
+              ? "not-allowed"
+              : "pointer",
             fontWeight: "600",
             opacity: loading ? 0.6 : 1,
           }}
@@ -307,7 +340,9 @@ function FileUpload({ onPrediction }) {
             <>
               <FaSpinner
                 className="spin"
-                style={{ marginRight: "8px" }}
+                style={{
+                  marginRight: "8px",
+                }}
               />
               Analyzing...
             </>
@@ -339,6 +374,39 @@ function FileUpload({ onPrediction }) {
           <FaTrash />
         </button>
       </div>
+
+      {/* ============================
+          ERROR MESSAGE
+      ============================ */}
+
+      {errorMessage && (
+        <div
+          role="alert"
+          style={{
+            marginTop: "22px",
+            padding: "14px 18px",
+            borderRadius: "10px",
+            border: "1px solid rgba(239, 68, 68, 0.45)",
+            background: "rgba(239, 68, 68, 0.08)",
+            color: "#fca5a5",
+            display: "flex",
+            alignItems: "flex-start",
+            justifyContent: "center",
+            gap: "10px",
+            textAlign: "left",
+            lineHeight: "1.5",
+          }}
+        >
+          <FaExclamationTriangle
+            style={{
+              marginTop: "3px",
+              flexShrink: 0,
+            }}
+          />
+
+          <span>{errorMessage}</span>
+        </div>
+      )}
 
       {/* ============================
           FILE INFORMATION
