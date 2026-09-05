@@ -3,18 +3,33 @@ import {
   FaShieldAlt,
   FaBullseye,
   FaFingerprint,
+  FaFileCsv,
 } from "react-icons/fa";
 
 function RecentLogs({ logs = [] }) {
   const safeLogs = Array.isArray(logs) ? logs : [];
 
-  const getSeverity = (confidence) => {
+  const getSeverity = (prediction, confidence) => {
+    const normalizedPrediction = String(
+      prediction || ""
+    ).toLowerCase();
+
+    if (
+      normalizedPrediction === "normal" ||
+      normalizedPrediction === "benign"
+    ) {
+      return {
+        label: "Low",
+        color: "#22c55e",
+      };
+    }
+
     const value = Number(confidence);
 
     if (!Number.isFinite(value)) {
       return {
-        label: "Low",
-        color: "#22c55e",
+        label: "Review",
+        color: "#facc15",
       };
     }
 
@@ -52,10 +67,16 @@ function RecentLogs({ logs = [] }) {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
+          gap: "15px",
           marginBottom: "30px",
+          flexWrap: "wrap",
         }}
       >
-        <h3 style={{ margin: 0 }}>
+        <h3
+          style={{
+            margin: 0,
+          }}
+        >
           Recent Detections
         </h3>
 
@@ -69,7 +90,8 @@ function RecentLogs({ logs = [] }) {
             fontWeight: "700",
           }}
         >
-          {safeLogs.length} Total
+          {safeLogs.length}{" "}
+          {safeLogs.length === 1 ? "Detection" : "Detections"}
         </span>
       </div>
 
@@ -99,31 +121,74 @@ function RecentLogs({ logs = [] }) {
         <div className="logs">
           {safeLogs.map((log, index) => {
             const confidence = Number(log?.confidence);
+
             const safeConfidence = Number.isFinite(confidence)
               ? confidence
               : 0;
 
-            const severity = getSeverity(safeConfidence);
+            const prediction = log?.prediction || "Unknown";
+
+            const severity = getSeverity(
+              prediction,
+              safeConfidence
+            );
+
+            const detectionId =
+              log?.id ||
+              `DET-${String(index + 1).padStart(3, "0")}`;
+
+            const filename =
+              log?.filename || "Uploaded network dataset";
 
             return (
               <div
-                key={`${log?.time || "detection"}-${index}`}
+                key={`${detectionId}-${index}`}
                 className={`log-row ${
                   index === 0 ? "latest-row" : ""
                 }`}
+                style={{
+                  display: "grid",
+                  gap: "10px",
+                }}
               >
                 <div
                   style={{
                     display: "flex",
                     alignItems: "center",
                     gap: "8px",
+                    fontWeight: "600",
                   }}
                 >
-                  <FaFingerprint color="#38bdf8" />
+                  <FaFingerprint />
 
-                  <span>
-                    DET-
-                    {String(index + 1).padStart(3, "0")}
+                  <span>{detectionId}</span>
+
+                  {index === 0 && (
+                    <span className="latest-badge">
+                      ● ANALYZED
+                    </span>
+                  )}
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                  title="Analyzed dataset"
+                >
+                  <FaFileCsv />
+
+                  <span
+                    style={{
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                    title={filename}
+                  >
+                    {filename}
                   </span>
                 </div>
 
@@ -135,11 +200,24 @@ function RecentLogs({ logs = [] }) {
                   }}
                   title="Detection timestamp"
                 >
-                  <FaClock color="#9ca3af" />
+                  <FaClock />
 
                   <span>
-                    Detected: {log?.time || "Unknown"}
+                    {log?.time || "Unknown time"}
                   </span>
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    fontWeight: "600",
+                  }}
+                >
+                  <FaShieldAlt />
+
+                  <span>{prediction}</span>
                 </div>
 
                 <div
@@ -149,21 +227,7 @@ function RecentLogs({ logs = [] }) {
                     gap: "8px",
                   }}
                 >
-                  <FaShieldAlt color="#38bdf8" />
-
-                  <span>
-                    {log?.prediction || "Unknown"}
-                  </span>
-                </div>
-
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                  }}
-                >
-                  <FaBullseye color="#facc15" />
+                  <FaBullseye />
 
                   <span>
                     {safeConfidence.toFixed(2)}%
@@ -179,16 +243,11 @@ function RecentLogs({ logs = [] }) {
                     fontWeight: "700",
                     fontSize: "12px",
                     whiteSpace: "nowrap",
+                    width: "fit-content",
                   }}
                 >
                   {severity.label}
                 </span>
-
-                {index === 0 && (
-                  <span className="latest-badge">
-                    ● ANALYZED
-                  </span>
-                )}
               </div>
             );
           })}
