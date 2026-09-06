@@ -24,6 +24,7 @@ import {
 
 import "./App.css";
 
+
 function SummaryCard({ icon, title, value }) {
   return (
     <div className="summary-card">
@@ -37,35 +38,43 @@ function SummaryCard({ icon, title, value }) {
   );
 }
 
+
 function App() {
   const [data, setData] = useState(null);
   const [analysisHistory, setAnalysisHistory] = useState([]);
 
+  /*
+   * =========================================================
+   * RECEIVE BACKEND RESULT
+   * =========================================================
+   */
+
   const handlePrediction = (result) => {
-    if (!result) return;
+    if (!result) {
+      return;
+    }
 
     setData(result);
 
-    setAnalysisHistory((previous) => {
-      const next = [
-        ...previous,
-        {
-          ...result,
-          timestamp: new Date().toLocaleTimeString(),
-        },
-      ];
-
-      return next;
-    });
+    setAnalysisHistory((previous) => [
+      ...previous,
+      {
+        ...result,
+        timestamp: new Date().toLocaleTimeString(),
+      },
+    ]);
   };
 
+
   /*
-   * ---------------------------------------------------------
-   * Safe values
-   * ---------------------------------------------------------
+   * =========================================================
+   * SAFE ANALYSIS VALUES
+   * =========================================================
    */
 
-  const prediction = String(data?.prediction || "Unknown").trim();
+  const prediction = String(
+    data?.prediction || "Unknown"
+  ).trim();
 
   const rawConfidence = Number(data?.confidence);
 
@@ -73,29 +82,37 @@ function App() {
     ? Math.max(0, Math.min(100, rawConfidence))
     : 0;
 
-  const symbolicConfidence = Number(
-    data?.symbolic_confidence ?? data?.symbolic_support ?? 0
+  const rawSymbolicConfidence = Number(
+    data?.symbolic_confidence ??
+      data?.symbolic_support ??
+      0
   );
 
-  const safeSymbolicConfidence = Number.isFinite(symbolicConfidence)
-    ? Math.max(0, Math.min(100, symbolicConfidence))
+  const symbolicConfidence = Number.isFinite(
+    rawSymbolicConfidence
+  )
+    ? Math.max(0, Math.min(100, rawSymbolicConfidence))
     : 0;
 
+
   /*
-   * ---------------------------------------------------------
-   * Normal vs malicious semantics
-   * ---------------------------------------------------------
+   * =========================================================
+   * NORMAL / MALICIOUS CLASSIFICATION
+   * =========================================================
    */
 
   const isNormal =
     prediction.toLowerCase() === "normal" ||
     prediction.toLowerCase() === "benign";
 
+
   /*
-   * Threat level must describe the security risk,
-   * NOT simply the neural-network confidence.
+   * =========================================================
+   * THREAT LEVEL
    *
-   * A highly confident Normal prediction is LOW risk.
+   * Confidence alone must NOT determine threat level.
+   * A 99% confidence Normal prediction is LOW risk.
+   * =========================================================
    */
 
   let threatLevel = "Low";
@@ -110,59 +127,74 @@ function App() {
     }
   }
 
-  /*
-   * Risk score represents security risk.
-   * Confidence in a Normal prediction is NOT a risk score.
-   */
-
-  const riskScore = isNormal ? 0 : Math.round(confidence);
 
   /*
-   * ---------------------------------------------------------
-   * Detection time
-   * ---------------------------------------------------------
+   * =========================================================
+   * RISK SCORE
+   * =========================================================
    */
 
-  const detectionTime = new Date().toLocaleTimeString();
+  const riskScore = isNormal
+    ? 0
+    : Math.round(confidence);
+
 
   /*
-   * ---------------------------------------------------------
-   * Current analysis metadata
-   * ---------------------------------------------------------
+   * =========================================================
+   * ANALYSIS METADATA
+   * =========================================================
    */
 
-  const filename = data?.filename || "Network traffic analysis";
+  const filename =
+    data?.filename || "Network traffic analysis";
 
   const rowsProcessed =
     Number(data?.rows_processed) ||
     Number(data?.symbolic_rows_evaluated) ||
     0;
 
+  const detectionTime =
+    new Date().toLocaleTimeString();
+
+
   /*
-   * ---------------------------------------------------------
-   * Analysis statistics
-   * ---------------------------------------------------------
+   * =========================================================
+   * ANALYSIS HISTORY STATISTICS
+   * =========================================================
    */
 
-  const totalAnalyses = analysisHistory.length;
+  const totalAnalyses =
+    analysisHistory.length;
 
-  const maliciousAnalyses = analysisHistory.filter(
-    (item) => String(item.prediction).toLowerCase() !== "normal"
-  ).length;
+  const maliciousAnalyses =
+    analysisHistory.filter(
+      (item) =>
+        String(item?.prediction || "")
+          .toLowerCase() !== "normal"
+    ).length;
 
-  const normalAnalyses = totalAnalyses - maliciousAnalyses;
+  const normalAnalyses =
+    totalAnalyses - maliciousAnalyses;
 
-  const highRiskAnalyses = analysisHistory.filter((item) => {
-    const itemPrediction = String(item.prediction || "").toLowerCase();
-    const itemConfidence = Number(item.confidence) || 0;
+  const highRiskAnalyses =
+    analysisHistory.filter((item) => {
+      const itemPrediction =
+        String(item?.prediction || "").toLowerCase();
 
-    return itemPrediction !== "normal" && itemConfidence >= 80;
-  }).length;
+      const itemConfidence =
+        Number(item?.confidence) || 0;
+
+      return (
+        itemPrediction !== "normal" &&
+        itemConfidence >= 80
+      );
+    }).length;
 
   const averageConfidence =
     totalAnalyses > 0
       ? analysisHistory.reduce(
-          (sum, item) => sum + (Number(item.confidence) || 0),
+          (sum, item) =>
+            sum + (Number(item?.confidence) || 0),
           0
         ) / totalAnalyses
       : 0;
@@ -172,92 +204,68 @@ function App() {
       ? (maliciousAnalyses / totalAnalyses) * 100
       : 0;
 
+
   /*
-   * ---------------------------------------------------------
-   * Attack distribution
-   * ---------------------------------------------------------
+   * =========================================================
+   * ATTACK DISTRIBUTION
+   * =========================================================
    */
 
   const attackDistribution =
-    analysisHistory.length > 0
-      ? analysisHistory.reduce((distribution, item) => {
-          const label = item.prediction || "Unknown";
+    analysisHistory.reduce(
+      (distribution, item) => {
+        const label =
+          item?.prediction || "Unknown";
 
-          distribution[label] = (distribution[label] || 0) + 1;
+        distribution[label] =
+          (distribution[label] || 0) + 1;
 
-          return distribution;
-        }, {})
-      : {};
+        return distribution;
+      },
+      {}
+    );
+
 
   /*
-   * ---------------------------------------------------------
-   * Confidence history
-   * ---------------------------------------------------------
+   * =========================================================
+   * CONFIDENCE HISTORY
+   * =========================================================
    */
 
-  const confidenceHistory = analysisHistory.map((item) => ({
-    prediction: item.prediction || "Unknown",
-    confidence: Number(item.confidence) || 0,
-  }));
+  const confidenceHistory =
+    analysisHistory.map((item) => ({
+      prediction:
+        item?.prediction || "Unknown",
+
+      confidence:
+        Number(item?.confidence) || 0,
+    }));
+
+
+  /*
+   * =========================================================
+   * RENDER
+   * =========================================================
+   */
 
   return (
     <div className="app">
+
+      {/* Header already contains the System Online
+          and AEGIS-NSAI hero sections. */}
+
       <Header />
 
       <main className="dashboard-container">
-        {/* =================================================
-            SYSTEM STATUS
-        ================================================= */}
-
-        <section className="system-status">
-          <div className="system-status-left">
-            <div className="status-indicator"></div>
-
-            <div>
-              <h3>
-                <FaNetworkWired /> System Online
-              </h3>
-
-              <p>Total Analyses : {totalAnalyses}</p>
-            </div>
-          </div>
-
-          <div className="system-status-right">
-            <div>
-              <span>AI ENGINE</span>
-              <strong>
-                <FaBrain /> ACTIVE
-              </strong>
-            </div>
-
-            <div>
-              <span>{new Date().toLocaleDateString()}</span>
-              <strong>{detectionTime}</strong>
-            </div>
-          </div>
-        </section>
-
-        {/* =================================================
-            HERO
-        ================================================= */}
-
-        <section className="hero-section">
-          <h1>
-            <FaShieldAlt /> AEGIS-NSAI
-          </h1>
-
-          <p>Neuro-Symbolic Intrusion Detection System</p>
-
-          <div className="version-badge">
-            Version 1.0 · CSV Network Analysis
-          </div>
-        </section>
 
         {/* =================================================
             FILE UPLOAD
         ================================================= */}
 
-        <FileUpload onPrediction={handlePrediction} />
+        <FileUpload
+          onPrediction={handlePrediction}
+        />
+
 
         {/* =================================================
             ANALYSIS RESULTS
@@ -265,23 +273,34 @@ function App() {
 
         {data && (
           <>
-            {/* Current analysis */}
+
+            {/* =================================================
+                CURRENT ANALYSIS
+            ================================================= */}
 
             <section className="current-analysis">
+
               <h2>CURRENT ANALYSIS</h2>
 
-              <h3>{filename}</h3>
+              <h3>
+                {filename}
+              </h3>
 
               <p>
-                {rowsProcessed.toLocaleString()} network-flow rows analyzed
+                {rowsProcessed.toLocaleString()}
+                {" "}
+                network-flow rows analyzed
               </p>
+
             </section>
+
 
             {/* =================================================
                 SUMMARY CARDS
             ================================================= */}
 
             <section className="summary-grid">
+
               <SummaryCard
                 icon={<FaShieldAlt />}
                 title="Prediction"
@@ -317,13 +336,16 @@ function App() {
                 title="Threat Level"
                 value={threatLevel}
               />
+
             </section>
+
 
             {/* =================================================
                 PREDICTION + CONFIDENCE
             ================================================= */}
 
             <section className="result-grid">
+
               <PredictionCard
                 prediction={prediction}
                 confidence={confidence}
@@ -335,7 +357,9 @@ function App() {
                 confidence={confidence}
                 prediction={prediction}
               />
+
             </section>
+
 
             {/* =================================================
                 AI EXPLANATION
@@ -345,10 +369,17 @@ function App() {
               prediction={prediction}
               confidence={confidence}
               message={data?.message}
-              symbolicConfidence={safeSymbolicConfidence}
-              symbolicSupport={safeSymbolicConfidence}
-              symbolicExplanation={data?.symbolic_explanation}
+              symbolicConfidence={
+                symbolicConfidence
+              }
+              symbolicSupport={
+                symbolicConfidence
+              }
+              symbolicExplanation={
+                data?.symbolic_explanation
+              }
             />
+
 
             {/* =================================================
                 KNOWLEDGE GRAPH
@@ -356,35 +387,50 @@ function App() {
 
             <KnowledgeGraph
               prediction={prediction}
-              nodes={data?.knowledge_graph || []}
-              symbolicExplanation={data?.symbolic_explanation}
+              nodes={
+                data?.knowledge_graph || []
+              }
+              symbolicExplanation={
+                data?.symbolic_explanation
+              }
             />
+
 
             {/* =================================================
                 ATTACK DESCRIPTION
             ================================================= */}
 
             <section className="attack-description">
-              <h2>ATTACK DESCRIPTION</h2>
+
+              <h2>
+                ATTACK DESCRIPTION
+              </h2>
 
               <p>
                 {isNormal
                   ? "Normal network activity with no malicious behaviour detected."
-                  : data?.symbolic_explanation ||
-                    `The network traffic was classified as ${prediction}. Further investigation is recommended.`}
+                  : (
+                      data?.symbolic_explanation ||
+                      `The network traffic was classified as ${prediction}. Further investigation is recommended.`
+                    )}
               </p>
+
             </section>
 
+
             {/* =================================================
-                RECOMMENDATIONS
+                RECOMMENDED ACTIONS
             ================================================= */}
 
             <ThreatRecommendation
               prediction={prediction}
               confidence={confidence}
               threatLevel={threatLevel}
-              symbolicConfidence={safeSymbolicConfidence}
+              symbolicConfidence={
+                symbolicConfidence
+              }
             />
+
 
             {/* =================================================
                 EXPORT REPORT
@@ -398,20 +444,38 @@ function App() {
               riskScore={riskScore}
             />
 
+
             {/* =================================================
                 ATTACK ANALYTICS
             ================================================= */}
 
             <AttackAnalytics
-              totalAnalyses={totalAnalyses}
-              highRisk={highRiskAnalyses}
-              maliciousDetections={maliciousAnalyses}
-              normalDetections={normalAnalyses}
-              averageConfidence={averageConfidence}
-              maliciousDetectionRate={maliciousRate}
-              latestDetection={prediction}
-              latestConfidence={confidence}
+              totalAnalyses={
+                totalAnalyses
+              }
+              highRisk={
+                highRiskAnalyses
+              }
+              maliciousDetections={
+                maliciousAnalyses
+              }
+              normalDetections={
+                normalAnalyses
+              }
+              averageConfidence={
+                averageConfidence
+              }
+              maliciousDetectionRate={
+                maliciousRate
+              }
+              latestDetection={
+                prediction
+              }
+              latestConfidence={
+                confidence
+              }
             />
+
 
             {/* =================================================
                 ATTACK DISTRIBUTION
@@ -422,8 +486,9 @@ function App() {
               prediction={prediction}
             />
 
+
             {/* =================================================
-                CONFIDENCE HISTORY
+                CONFIDENCE CHART
             ================================================= */}
 
             <ConfidenceChart
@@ -432,13 +497,18 @@ function App() {
               data={confidenceHistory}
             />
 
+
             {/* =================================================
                 RECENT DETECTIONS
             ================================================= */}
 
-            <RecentLogs logs={analysisHistory} />
+            <RecentLogs
+              logs={analysisHistory}
+            />
+
           </>
         )}
+
       </main>
     </div>
   );
