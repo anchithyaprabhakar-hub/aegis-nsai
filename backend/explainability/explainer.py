@@ -84,12 +84,13 @@ def generate_explanation(
     ):
 
         message = (
-            f"Neural network and symbolic reasoning "
-            f"both support {final_prediction}. "
-            f"The neural network confidence is "
-            f"{ml_percentage:.2f}%, while symbolic "
-            f"evidence is {symbolic_percentage:.2f}%."
-        )
+    "Neural network and symbolic reasoning both support "
+    + str(final_prediction)
+    + ". The neural network confidence is "
+    + f"{ml_percentage:.2f}%"
+    + ", while symbolic evidence is "
+    + f"{symbolic_percentage:.2f}%."
+)
 
 
     # ========================================================
