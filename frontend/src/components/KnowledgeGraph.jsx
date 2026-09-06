@@ -4,42 +4,65 @@ import {
   FaShieldAlt,
   FaBug,
   FaServer,
+  FaCheckCircle,
 } from "react-icons/fa";
 
 function KnowledgeGraph({ graph }) {
-  const getIcon = (item) => {
-    const text = item.toLowerCase();
+  const graphNodes = Array.isArray(graph) ? graph : [];
 
-    if (text.includes("port")) {
-      return <FaNetworkWired color="#38bdf8" />;
+  const getIcon = (item) => {
+    const text = String(item || "").toLowerCase();
+
+    if (
+      text.includes("port") ||
+      text.includes("network") ||
+      text.includes("open")
+    ) {
+      return <FaNetworkWired />;
     }
 
-    if (text.includes("scan") || text.includes("recon")) {
-      return <FaShieldAlt color="#22c55e" />;
+    if (
+      text.includes("scan") ||
+      text.includes("reconnaissance") ||
+      text.includes("recon")
+    ) {
+      return <FaShieldAlt />;
     }
 
     if (
       text.includes("attack") ||
       text.includes("ddos") ||
-      text.includes("brute")
+      text.includes("brute") ||
+      text.includes("disruption")
     ) {
-      return <FaBug color="#ef4444" />;
+      return <FaBug />;
     }
 
-    return <FaServer color="#9ca3af" />;
+    if (
+      text.includes("normal") ||
+      text.includes("no malicious")
+    ) {
+      return <FaCheckCircle />;
+    }
+
+    return <FaServer />;
   };
 
   return (
     <div
       className="info-card"
-      style={{ gridColumn: "1 / span 2" }}
+      style={{
+        gridColumn: "1 / span 2",
+      }}
     >
       <div
         style={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          marginBottom: "25px",
+          gap: "15px",
+          marginBottom: "20px",
+          flexWrap: "wrap",
         }}
       >
         <h3
@@ -50,69 +73,134 @@ function KnowledgeGraph({ graph }) {
             margin: 0,
           }}
         >
-          <FaProjectDiagram color="#38bdf8" />
+          <FaProjectDiagram />
           Knowledge Graph
         </h3>
 
         <span
           style={{
             background: "#222",
-            color: "#38bdf8",
             padding: "6px 12px",
             borderRadius: "20px",
             fontSize: "13px",
             fontWeight: "700",
           }}
         >
-          {graph.length} Nodes
+          {graphNodes.length}{" "}
+          {graphNodes.length === 1 ? "Node" : "Nodes"}
         </span>
       </div>
 
-      <p
+      <div
         style={{
-          color: "#bdbdbd",
-          marginBottom: "25px",
-          lineHeight: "1.7",
+          padding: "14px 16px",
+          marginBottom: "20px",
+          borderRadius: "10px",
+          background: "#111111",
+          border: "1px solid #2c2c2c",
         }}
       >
-        The Neuro-Symbolic engine identified the following entities and
-        relationships associated with the detected network activity.
-      </p>
+        <p
+          style={{
+            margin: 0,
+            color: "#d1d5db",
+            lineHeight: "1.7",
+          }}
+        >
+          <strong>Symbolic Security Context:</strong>{" "}
+          The knowledge graph represents security concepts and behavioural
+          evidence associated with the detected network activity.
+        </p>
+      </div>
 
-      {graph.length === 0 ? (
+      {graphNodes.length === 0 ? (
         <div
           style={{
             textAlign: "center",
-            padding: "30px",
+            padding: "35px 20px",
             color: "#8f8f8f",
+            border: "1px dashed #333",
+            borderRadius: "12px",
           }}
         >
           <FaProjectDiagram
             size={42}
-            style={{ marginBottom: "12px" }}
+            style={{
+              marginBottom: "12px",
+            }}
           />
 
-          <p>No graph data available.</p>
+          <p
+            style={{
+              margin: 0,
+            }}
+          >
+            No symbolic graph data is available for this analysis.
+          </p>
         </div>
       ) : (
-        <div className="tags">
-          {graph.map((item, index) => (
-            <div
-              key={index}
-              className="tag"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                padding: "12px 18px",
-              }}
-            >
-              {getIcon(item)}
+        <>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns:
+                "repeat(auto-fit, minmax(190px, 1fr))",
+              gap: "12px",
+            }}
+          >
+            {graphNodes.map((item, index) => (
+              <div
+                key={`${String(item)}-${index}`}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  padding: "15px",
+                  borderRadius: "10px",
+                  background: "#151515",
+                  border: "1px solid #2c2c2c",
+                  minHeight: "54px",
+                }}
+              >
+                <span
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    minWidth: "32px",
+                    fontSize: "17px",
+                  }}
+                >
+                  {getIcon(item)}
+                </span>
 
-              <span>{item}</span>
-            </div>
-          ))}
-        </div>
+                <span
+                  style={{
+                    color: "#e5e7eb",
+                    fontWeight: "600",
+                    lineHeight: "1.4",
+                  }}
+                >
+                  {String(item)}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          <p
+            style={{
+              marginTop: "18px",
+              marginBottom: 0,
+              color: "#8f8f8f",
+              fontSize: "14px",
+              lineHeight: "1.6",
+            }}
+          >
+            These nodes provide symbolic context that complements the neural
+            network prediction and helps connect the detection with relevant
+            security concepts.
+          </p>
+        </>
       )}
     </div>
   );
