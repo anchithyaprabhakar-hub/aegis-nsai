@@ -1,7 +1,4 @@
-import {
-  Line
-} from "react-chartjs-2";
-
+import React from "react";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -11,6 +8,7 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
+import { Line } from "react-chartjs-2";
 
 ChartJS.register(
   CategoryScale,
@@ -21,130 +19,75 @@ ChartJS.register(
   Legend
 );
 
-function ConfidenceChart({ logs }) {
+function ConfidenceChart({ confidence = 0, prediction = "Unknown" }) {
+  // Safely normalize confidence so undefined/null can never crash the chart.
+  const numericConfidence = Number(confidence);
 
-  const data = {
+  const safeConfidence = Number.isFinite(numericConfidence)
+    ? Math.max(0, Math.min(100, numericConfidence))
+    : 0;
 
-    labels: logs
-      .slice()
-      .reverse()
-      .map((_, index) => `Scan ${index + 1}`),
-
+  const chartData = {
+    labels: ["Confidence"],
     datasets: [
-
       {
-
-        label: "Confidence",
-
-        data: logs
-          .slice()
-          .reverse()
-          .map((log) => Number(log.confidence)),
-
-        borderColor: "#22c55e",
-
-        backgroundColor: "rgba(34,197,94,.2)",
-
-        fill: true,
-
-        tension: 0.4,
-
+        label: prediction || "Prediction",
+        data: [safeConfidence],
+        tension: 0.3,
+        borderWidth: 3,
+        pointRadius: 5,
+        pointHoverRadius: 7,
       },
-
     ],
-
   };
 
-  const options = {
-
+  const chartOptions = {
     responsive: true,
-
-    maintainAspectRatio: true,
-
+    maintainAspectRatio: false,
     plugins: {
-
       legend: {
-
-        labels: {
-
-          color: "#ffffff",
-
-        },
-
+        display: true,
       },
+      tooltip: {
+        callbacks: {
+          label: function (context) {
+            const value = Number(context.raw);
 
+            return ` Confidence: ${
+              Number.isFinite(value) ? value.toFixed(2) : "0.00"
+            }%`;
+          },
+        },
+      },
     },
-
     scales: {
-
-      x: {
-
-        ticks: {
-
-          color: "#ffffff",
-
-        },
-
-        grid: {
-
-          color: "#333",
-
-        },
-
-      },
-
       y: {
-
-        beginAtZero: true,
-
+        min: 0,
         max: 100,
-
         ticks: {
+          callback: function (value) {
+            const numericValue = Number(value);
 
-          color: "#ffffff",
-
+            return Number.isFinite(numericValue)
+              ? `${numericValue}%`
+              : "0%";
+          },
         },
-
-        grid: {
-
-          color: "#333",
-
-        },
-
       },
-
     },
-
   };
 
   return (
-
     <div
-      className="info-card"
       style={{
-        gridColumn: "1 / span 2",
+        width: "100%",
+        height: "260px",
+        position: "relative",
       }}
     >
-
-      <h3>Confidence History</h3>
-
-      {logs.length === 0 ? (
-
-        <p>No confidence data available.</p>
-
-      ) : (
-
-        <Line
-          data={data}
-          options={options}
-        />
-
-      )}
-
+      <Line data={chartData} options={chartOptions} />
     </div>
-
   );
-
 }
 
 export default ConfidenceChart;
