@@ -1,79 +1,107 @@
-import { useState } from "react";
-import "./App.css";
+import React, { useState } from "react";
 
 import Header from "./components/Header";
 import FileUpload from "./components/FileUpload";
-import SummaryCard from "./components/SummaryCard";
-import DashboardGrid from "./components/DashboardGrid";
 import PredictionCard from "./components/PredictionCard";
 import ConfidenceBar from "./components/ConfidenceBar";
 import ExplanationCard from "./components/ExplanationCard";
 import KnowledgeGraph from "./components/KnowledgeGraph";
-import AttackChart from "./components/AttackChart";
-import ConfidenceChart from "./components/ConfidenceChart";
 import ThreatRecommendation from "./components/ThreatRecommendation";
 import AttackAnalytics from "./components/AttackAnalytics";
+import AttackChart from "./components/AttackChart";
+import ConfidenceChart from "./components/ConfidenceChart";
 import RecentLogs from "./components/RecentLogs";
 import DownloadReport from "./components/DownloadReport";
 
 import {
   FaShieldAlt,
-  FaBrain,
-  FaChartLine,
   FaNetworkWired,
+  FaChartLine,
+  FaBrain,
   FaClock,
+  FaProjectDiagram,
 } from "react-icons/fa";
+
+import "./App.css";
+
+function SummaryCard({ icon, title, value }) {
+  return (
+    <div className="summary-card">
+      <div className="summary-card-header">
+        <span>{title}</span>
+        <span className="summary-card-icon">{icon}</span>
+      </div>
+
+      <div className="summary-card-value">{value}</div>
+    </div>
+  );
+}
 
 function App() {
   const [data, setData] = useState(null);
-  const [logs, setLogs] = useState([]);
-  const [analysisCount, setAnalysisCount] = useState(0);
-
-  // ============================================================
-  // HANDLE COMPLETED ANALYSIS
-  // ============================================================
+  const [analysisHistory, setAnalysisHistory] = useState([]);
 
   const handlePrediction = (result) => {
-    const analyzedAt = new Date().toISOString();
+    if (!result) return;
 
-    const analysisResult = {
-      ...result,
-      analyzedAt,
-    };
+    setData(result);
 
-    setData(analysisResult);
+    setAnalysisHistory((previous) => {
+      const next = [
+        ...previous,
+        {
+          ...result,
+          timestamp: new Date().toLocaleTimeString(),
+        },
+      ];
 
-    setAnalysisCount((count) => count + 1);
-
-    const newLog = {
-      id: `DET-${String(analysisCount + 1).padStart(3, "0")}`,
-      prediction: result.prediction,
-      confidence: result.confidence,
-      filename:
-        result.filename ||
-        "Uploaded network dataset",
-      time: new Date(analyzedAt).toLocaleTimeString(),
-    };
-
-    setLogs((previousLogs) => [
-      newLog,
-      ...previousLogs.slice(0, 9),
-    ]);
+      return next;
+    });
   };
 
-  // ============================================================
-  // THREAT LEVEL
-  // ============================================================
+  /*
+   * ---------------------------------------------------------
+   * Safe values
+   * ---------------------------------------------------------
+   */
+
+  const prediction = String(data?.prediction || "Unknown").trim();
+
+  const rawConfidence = Number(data?.confidence);
+
+  const confidence = Number.isFinite(rawConfidence)
+    ? Math.max(0, Math.min(100, rawConfidence))
+    : 0;
+
+  const symbolicConfidence = Number(
+    data?.symbolic_confidence ?? data?.symbolic_support ?? 0
+  );
+
+  const safeSymbolicConfidence = Number.isFinite(symbolicConfidence)
+    ? Math.max(0, Math.min(100, symbolicConfidence))
+    : 0;
+
+  /*
+   * ---------------------------------------------------------
+   * Normal vs malicious semantics
+   * ---------------------------------------------------------
+   */
+
+  const isNormal =
+    prediction.toLowerCase() === "normal" ||
+    prediction.toLowerCase() === "benign";
+
+  /*
+   * Threat level must describe the security risk,
+   * NOT simply the neural-network confidence.
+   *
+   * A highly confident Normal prediction is LOW risk.
+   */
 
   let threatLevel = "Low";
 
-  if (data) {
-    const prediction = String(data.prediction || "").trim();
-    const confidence = Number(data.confidence) || 0;
-
-    if (prediction === "Normal") {
-      threatLevel = "Low";
-    } else if (confidence >= 80) {
+  if (!isNormal) {
+    if (confidence >= 80) {
       threatLevel = "Critical";
     } else if (confidence >= 60) {
       threatLevel = "High";
@@ -82,338 +110,336 @@ function App() {
     }
   }
 
-  // ============================================================
-  // RISK SCORE
-  // ============================================================
+  /*
+   * Risk score represents security risk.
+   * Confidence in a Normal prediction is NOT a risk score.
+   */
 
-  const riskScore =
-    data && String(data.prediction || "").trim() === "Normal"
-      ? 0
-      : Math.round(Number(data?.confidence) || 0);
+  const riskScore = isNormal ? 0 : Math.round(confidence);
 
-  // ============================================================
-  // ATTACK DESCRIPTIONS
-  // ============================================================
+  /*
+   * ---------------------------------------------------------
+   * Detection time
+   * ---------------------------------------------------------
+   */
 
-  const attackDescriptions = {
-    PortScan:
-      "Attempts to discover open ports and running services on the target system.",
+  const detectionTime = new Date().toLocaleTimeString();
 
-    DDoS:
-      "Floods the target with excessive traffic to disrupt service availability.",
+  /*
+   * ---------------------------------------------------------
+   * Current analysis metadata
+   * ---------------------------------------------------------
+   */
 
-    BruteForce:
-      "Repeated login attempts to gain unauthorized system access.",
-
-    "Web Attack - Brute Force":
-      "Attempts to gain unauthorized access through repeated web authentication requests.",
-
-    "Web Attack - Sql Injection":
-      "Attempts to manipulate database queries through malicious SQL input.",
-
-    "Web Attack - XSS":
-      "Attempts to inject malicious client-side scripts into web content.",
-
-    "DoS GoldenEye":
-      "Attempts to exhaust server resources through repeated HTTP requests.",
-
-    "DoS Hulk":
-      "Generates large volumes of HTTP traffic to exhaust target resources.",
-
-    "DoS Slowhttptest":
-      "Uses slow HTTP request techniques to consume server connections.",
-
-    "DoS slowloris":
-      "Maintains many partial HTTP connections to exhaust server resources.",
-
-    "FTP-Patator":
-      "Attempts repeated authentication requests against an FTP service.",
-
-    "SSH-Patator":
-      "Attempts repeated authentication requests against an SSH service.",
-
-    Bot:
-      "Network behaviour associated with automated or bot-controlled activity.",
-
-    Heartbleed:
-      "Traffic associated with attempts to exploit the Heartbleed vulnerability.",
-
-    Infiltration:
-      "Network behaviour associated with unauthorized system infiltration.",
-
-    Normal:
-      "Normal network activity with no malicious behaviour detected.",
-
-    Benign:
-      "Normal network activity with no malicious behaviour detected.",
-  };
-
-  // ============================================================
-  // CURRENT ANALYSIS TIME
-  // ============================================================
-
-  const detectionTime = data?.analyzedAt
-    ? new Date(data.analyzedAt).toLocaleTimeString()
-    : "N/A";
-
-  // ============================================================
-  // CURRENT DATASET
-  // ============================================================
-
-  const currentFilename =
-    data?.filename ||
-    "Uploaded network dataset";
+  const filename = data?.filename || "Network traffic analysis";
 
   const rowsProcessed =
-    Number(data?.rows_processed) || 0;
+    Number(data?.rows_processed) ||
+    Number(data?.symbolic_rows_evaluated) ||
+    0;
+
+  /*
+   * ---------------------------------------------------------
+   * Analysis statistics
+   * ---------------------------------------------------------
+   */
+
+  const totalAnalyses = analysisHistory.length;
+
+  const maliciousAnalyses = analysisHistory.filter(
+    (item) => String(item.prediction).toLowerCase() !== "normal"
+  ).length;
+
+  const normalAnalyses = totalAnalyses - maliciousAnalyses;
+
+  const highRiskAnalyses = analysisHistory.filter((item) => {
+    const itemPrediction = String(item.prediction || "").toLowerCase();
+    const itemConfidence = Number(item.confidence) || 0;
+
+    return itemPrediction !== "normal" && itemConfidence >= 80;
+  }).length;
+
+  const averageConfidence =
+    totalAnalyses > 0
+      ? analysisHistory.reduce(
+          (sum, item) => sum + (Number(item.confidence) || 0),
+          0
+        ) / totalAnalyses
+      : 0;
+
+  const maliciousRate =
+    totalAnalyses > 0
+      ? (maliciousAnalyses / totalAnalyses) * 100
+      : 0;
+
+  /*
+   * ---------------------------------------------------------
+   * Attack distribution
+   * ---------------------------------------------------------
+   */
+
+  const attackDistribution =
+    analysisHistory.length > 0
+      ? analysisHistory.reduce((distribution, item) => {
+          const label = item.prediction || "Unknown";
+
+          distribution[label] = (distribution[label] || 0) + 1;
+
+          return distribution;
+        }, {})
+      : {};
+
+  /*
+   * ---------------------------------------------------------
+   * Confidence history
+   * ---------------------------------------------------------
+   */
+
+  const confidenceHistory = analysisHistory.map((item) => ({
+    prediction: item.prediction || "Unknown",
+    confidence: Number(item.confidence) || 0,
+  }));
 
   return (
-    <div className="container">
+    <div className="app">
+      <Header />
 
-      {/* ======================================================
-          HEADER
-          ====================================================== */}
+      <main className="dashboard-container">
+        {/* =================================================
+            SYSTEM STATUS
+        ================================================= */}
 
-      <Header
-        analysisCount={analysisCount}
-      />
+        <section className="system-status">
+          <div className="system-status-left">
+            <div className="status-indicator"></div>
 
-      {/* ======================================================
-          FILE UPLOAD
-          ====================================================== */}
+            <div>
+              <h3>
+                <FaNetworkWired /> System Online
+              </h3>
 
-      <FileUpload
-        onPrediction={handlePrediction}
-      />
-
-      {/* ======================================================
-          EMPTY STATE
-          ====================================================== */}
-
-      {!data ? (
-        <div className="loading">
-          Upload a CSV file to begin analysis.
-        </div>
-      ) : (
-        <>
-
-          {/* ==================================================
-              CURRENT ANALYSIS
-              ================================================== */}
-
-          <div
-            className="info-card"
-            style={{
-              textAlign: "center",
-              marginTop: "18px",
-            }}
-          >
-            <h3>Current Analysis</h3>
-
-            <p
-              style={{
-                marginTop: "12px",
-                color: "#38bdf8",
-                fontWeight: "600",
-                wordBreak: "break-word",
-              }}
-            >
-              {currentFilename}
-            </p>
-
-            <p
-              style={{
-                marginTop: "8px",
-                color: "#9ca3af",
-                fontSize: "14px",
-              }}
-            >
-              {rowsProcessed > 0
-                ? `${rowsProcessed.toLocaleString()} network-flow rows analyzed`
-                : "Dataset-level network-flow analysis"}
-            </p>
+              <p>Total Analyses : {totalAnalyses}</p>
+            </div>
           </div>
 
-          <br />
+          <div className="system-status-right">
+            <div>
+              <span>AI ENGINE</span>
+              <strong>
+                <FaBrain /> ACTIVE
+              </strong>
+            </div>
 
-          {/* ==================================================
-              SUMMARY CARDS
-              ================================================== */}
+            <div>
+              <span>{new Date().toLocaleDateString()}</span>
+              <strong>{detectionTime}</strong>
+            </div>
+          </div>
+        </section>
 
-          <DashboardGrid>
+        {/* =================================================
+            HERO
+        ================================================= */}
 
-            <SummaryCard
-              icon={<FaShieldAlt />}
-              title="Prediction"
-              value={data.prediction}
-            />
+        <section className="hero-section">
+          <h1>
+            <FaShieldAlt /> AEGIS-NSAI
+          </h1>
 
-            <SummaryCard
-              icon={<FaChartLine />}
-              title="Confidence"
-              value={`${Number(data.confidence).toFixed(2)}%`}
-            />
+          <p>Neuro-Symbolic Intrusion Detection System</p>
 
-            <SummaryCard
-              icon={<FaBrain />}
-              title="AI Engine"
-              value="Neuro-Symbolic"
-            />
+          <div className="version-badge">
+            Version 1.0 · CSV Network Analysis
+          </div>
+        </section>
 
-            <SummaryCard
-              icon={<FaNetworkWired />}
-              title="Risk Score"
-              value={`${riskScore}/100`}
-            />
+        {/* =================================================
+            FILE UPLOAD
+        ================================================= */}
 
-            <SummaryCard
-              icon={<FaClock />}
-              title="Detection Time"
-              value={detectionTime}
-            />
+        <FileUpload onPrediction={handlePrediction} />
 
-            <SummaryCard
-              icon={<FaShieldAlt />}
-              title="Threat Level"
-              value={threatLevel}
-            />
+        {/* =================================================
+            ANALYSIS RESULTS
+        ================================================= */}
 
-          </DashboardGrid>
+        {data && (
+          <>
+            {/* Current analysis */}
 
-          <br />
+            <section className="current-analysis">
+              <h2>CURRENT ANALYSIS</h2>
 
-          {/* ==================================================
-              ANALYSIS DASHBOARD
-              ================================================== */}
+              <h3>{filename}</h3>
 
-          <DashboardGrid>
+              <p>
+                {rowsProcessed.toLocaleString()} network-flow rows analyzed
+              </p>
+            </section>
 
-            <PredictionCard
-              prediction={data.prediction}
-              confidence={data.confidence}
-            />
+            {/* =================================================
+                SUMMARY CARDS
+            ================================================= */}
 
-            <ConfidenceBar
-              confidence={Number(data.confidence) || 0}
-              prediction={data.prediction}
-            />
-
-            <ExplanationCard
-              prediction={data.prediction}
-              confidence={data.confidence}
-              message={data.message}
-              symbolicConfidence={data.symbolic_confidence}
-              symbolicSupport={data.symbolic_support}
-              symbolicExplanation={data.symbolic_explanation}
-            />
-
-          </DashboardGrid>
-
-          <br />
-
-          {/* ==================================================
-              KNOWLEDGE GRAPH
-              ================================================== */}
-
-          {data.knowledge_graph && (
-            <>
-              <KnowledgeGraph
-                graph={data.knowledge_graph}
+            <section className="summary-grid">
+              <SummaryCard
+                icon={<FaShieldAlt />}
+                title="Prediction"
+                value={prediction}
               />
 
-              <br />
-            </>
-          )}
+              <SummaryCard
+                icon={<FaChartLine />}
+                title="Confidence"
+                value={`${confidence.toFixed(2)}%`}
+              />
 
-          {/* ==================================================
-              ATTACK DESCRIPTION
-              ================================================== */}
+              <SummaryCard
+                icon={<FaBrain />}
+                title="AI Engine"
+                value="Neuro-Symbolic"
+              />
 
-          <div
-            className="info-card"
-            style={{
-              textAlign: "center",
-            }}
-          >
+              <SummaryCard
+                icon={<FaProjectDiagram />}
+                title="Risk Score"
+                value={`${riskScore}/100`}
+              />
 
-            <h3>Attack Description</h3>
+              <SummaryCard
+                icon={<FaClock />}
+                title="Detection Time"
+                value={detectionTime}
+              />
 
-            <p
-              style={{
-                marginTop: "20px",
-                fontSize: "17px",
-                lineHeight: "1.8",
-              }}
-            >
-              {attackDescriptions[data.prediction] ??
-                "Unknown network behaviour detected."}
-            </p>
+              <SummaryCard
+                icon={<FaShieldAlt />}
+                title="Threat Level"
+                value={threatLevel}
+              />
+            </section>
 
-          </div>
+            {/* =================================================
+                PREDICTION + CONFIDENCE
+            ================================================= */}
 
-          <br />
+            <section className="result-grid">
+              <PredictionCard
+                prediction={prediction}
+                confidence={confidence}
+                threatLevel={threatLevel}
+                severity={threatLevel}
+              />
 
-          {/* ==================================================
-              RECOMMENDATIONS
-              ================================================== */}
+              <ConfidenceBar
+                confidence={confidence}
+                prediction={prediction}
+              />
+            </section>
 
-          <ThreatRecommendation
-            prediction={data.prediction}
-          />
+            {/* =================================================
+                AI EXPLANATION
+            ================================================= */}
 
-          <br />
+            <ExplanationCard
+              prediction={prediction}
+              confidence={confidence}
+              message={data?.message}
+              symbolicConfidence={safeSymbolicConfidence}
+              symbolicSupport={safeSymbolicConfidence}
+              symbolicExplanation={data?.symbolic_explanation}
+            />
 
-          {/* ==================================================
-              PDF REPORT
-              ================================================== */}
+            {/* =================================================
+                KNOWLEDGE GRAPH
+            ================================================= */}
 
-          <DownloadReport
-            data={data}
-          />
+            <KnowledgeGraph
+              prediction={prediction}
+              nodes={data?.knowledge_graph || []}
+              symbolicExplanation={data?.symbolic_explanation}
+            />
 
-          <br />
+            {/* =================================================
+                ATTACK DESCRIPTION
+            ================================================= */}
 
-          {/* ==================================================
-              ATTACK ANALYTICS SUMMARY
-              ================================================== */}
+            <section className="attack-description">
+              <h2>ATTACK DESCRIPTION</h2>
 
-          <AttackAnalytics
-            logs={logs}
-          />
+              <p>
+                {isNormal
+                  ? "Normal network activity with no malicious behaviour detected."
+                  : data?.symbolic_explanation ||
+                    `The network traffic was classified as ${prediction}. Further investigation is recommended.`}
+              </p>
+            </section>
 
-          <br />
+            {/* =================================================
+                RECOMMENDATIONS
+            ================================================= */}
 
-          {/* ==================================================
-              ATTACK DISTRIBUTION
-              ================================================== */}
+            <ThreatRecommendation
+              prediction={prediction}
+              confidence={confidence}
+              threatLevel={threatLevel}
+              symbolicConfidence={safeSymbolicConfidence}
+            />
 
-          <AttackChart
-            logs={logs}
-          />
+            {/* =================================================
+                EXPORT REPORT
+            ================================================= */}
 
-          <br />
+            <DownloadReport
+              data={data}
+              prediction={prediction}
+              confidence={confidence}
+              threatLevel={threatLevel}
+              riskScore={riskScore}
+            />
 
-          {/* ==================================================
-              CONFIDENCE HISTORY
-              ================================================== */}
+            {/* =================================================
+                ATTACK ANALYTICS
+            ================================================= */}
 
-          <ConfidenceChart
-            logs={logs}
-          />
+            <AttackAnalytics
+              totalAnalyses={totalAnalyses}
+              highRisk={highRiskAnalyses}
+              maliciousDetections={maliciousAnalyses}
+              normalDetections={normalAnalyses}
+              averageConfidence={averageConfidence}
+              maliciousDetectionRate={maliciousRate}
+              latestDetection={prediction}
+              latestConfidence={confidence}
+            />
 
-          <br />
+            {/* =================================================
+                ATTACK DISTRIBUTION
+            ================================================= */}
 
-          {/* ==================================================
-              DETECTION HISTORY
-              ================================================== */}
+            <AttackChart
+              data={attackDistribution}
+              prediction={prediction}
+            />
 
-          <RecentLogs
-            logs={logs}
-          />
+            {/* =================================================
+                CONFIDENCE HISTORY
+            ================================================= */}
 
-        </>
-      )}
+            <ConfidenceChart
+              prediction={prediction}
+              confidence={confidence}
+              data={confidenceHistory}
+            />
 
+            {/* =================================================
+                RECENT DETECTIONS
+            ================================================= */}
+
+            <RecentLogs logs={analysisHistory} />
+          </>
+        )}
+      </main>
     </div>
   );
 }
