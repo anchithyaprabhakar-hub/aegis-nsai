@@ -68,14 +68,28 @@ function App() {
   let threatLevel = "Low";
 
   if (data) {
-    if (data.confidence >= 80) {
+    const prediction = String(data.prediction || "").trim();
+    const confidence = Number(data.confidence) || 0;
+
+    if (prediction === "Normal") {
+      threatLevel = "Low";
+    } else if (confidence >= 80) {
       threatLevel = "Critical";
-    } else if (data.confidence >= 60) {
+    } else if (confidence >= 60) {
       threatLevel = "High";
-    } else if (data.confidence >= 30) {
+    } else if (confidence >= 30) {
       threatLevel = "Medium";
     }
   }
+
+  // ============================================================
+  // RISK SCORE
+  // ============================================================
+
+  const riskScore =
+    data && String(data.prediction || "").trim() === "Normal"
+      ? 0
+      : Math.round(Number(data?.confidence) || 0);
 
   // ============================================================
   // ATTACK DESCRIPTIONS
@@ -158,7 +172,7 @@ function App() {
 
       {/* ======================================================
           HEADER
-      ====================================================== */}
+          ====================================================== */}
 
       <Header
         analysisCount={analysisCount}
@@ -166,7 +180,7 @@ function App() {
 
       {/* ======================================================
           FILE UPLOAD
-      ====================================================== */}
+          ====================================================== */}
 
       <FileUpload
         onPrediction={handlePrediction}
@@ -174,7 +188,7 @@ function App() {
 
       {/* ======================================================
           EMPTY STATE
-      ====================================================== */}
+          ====================================================== */}
 
       {!data ? (
         <div className="loading">
@@ -185,7 +199,7 @@ function App() {
 
           {/* ==================================================
               CURRENT ANALYSIS
-          ================================================== */}
+              ================================================== */}
 
           <div
             className="info-card"
@@ -224,7 +238,7 @@ function App() {
 
           {/* ==================================================
               SUMMARY CARDS
-          ================================================== */}
+              ================================================== */}
 
           <DashboardGrid>
 
@@ -249,7 +263,7 @@ function App() {
             <SummaryCard
               icon={<FaNetworkWired />}
               title="Risk Score"
-              value={`${Math.round(data.confidence)}/100`}
+              value={`${riskScore}/100`}
             />
 
             <SummaryCard
@@ -270,7 +284,7 @@ function App() {
 
           {/* ==================================================
               ANALYSIS DASHBOARD
-          ================================================== */}
+              ================================================== */}
 
           <DashboardGrid>
 
@@ -280,13 +294,17 @@ function App() {
             />
 
             <ConfidenceBar
-              confidence={data.confidence}
+              confidence={Number(data.confidence) || 0}
+              prediction={data.prediction}
             />
 
             <ExplanationCard
               prediction={data.prediction}
               confidence={data.confidence}
               message={data.message}
+              symbolicConfidence={data.symbolic_confidence}
+              symbolicSupport={data.symbolic_support}
+              symbolicExplanation={data.symbolic_explanation}
             />
 
           </DashboardGrid>
@@ -295,7 +313,7 @@ function App() {
 
           {/* ==================================================
               KNOWLEDGE GRAPH
-          ================================================== */}
+              ================================================== */}
 
           {data.knowledge_graph && (
             <>
@@ -309,7 +327,7 @@ function App() {
 
           {/* ==================================================
               ATTACK DESCRIPTION
-          ================================================== */}
+              ================================================== */}
 
           <div
             className="info-card"
@@ -337,7 +355,7 @@ function App() {
 
           {/* ==================================================
               RECOMMENDATIONS
-          ================================================== */}
+              ================================================== */}
 
           <ThreatRecommendation
             prediction={data.prediction}
@@ -347,7 +365,7 @@ function App() {
 
           {/* ==================================================
               PDF REPORT
-          ================================================== */}
+              ================================================== */}
 
           <DownloadReport
             data={data}
@@ -357,7 +375,7 @@ function App() {
 
           {/* ==================================================
               ATTACK ANALYTICS SUMMARY
-          ================================================== */}
+              ================================================== */}
 
           <AttackAnalytics
             logs={logs}
@@ -367,7 +385,7 @@ function App() {
 
           {/* ==================================================
               ATTACK DISTRIBUTION
-          ================================================== */}
+              ================================================== */}
 
           <AttackChart
             logs={logs}
@@ -377,7 +395,7 @@ function App() {
 
           {/* ==================================================
               CONFIDENCE HISTORY
-          ================================================== */}
+              ================================================== */}
 
           <ConfidenceChart
             logs={logs}
@@ -387,7 +405,7 @@ function App() {
 
           {/* ==================================================
               DETECTION HISTORY
-          ================================================== */}
+              ================================================== */}
 
           <RecentLogs
             logs={logs}
