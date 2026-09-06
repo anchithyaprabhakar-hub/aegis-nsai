@@ -15,7 +15,6 @@ import DownloadReport from "./components/DownloadReport";
 
 import {
   FaShieldAlt,
-  FaNetworkWired,
   FaChartLine,
   FaBrain,
   FaClock,
@@ -33,7 +32,9 @@ function SummaryCard({ icon, title, value }) {
         <span className="summary-card-icon">{icon}</span>
       </div>
 
-      <div className="summary-card-value">{value}</div>
+      <div className="summary-card-value">
+        {value}
+      </div>
     </div>
   );
 }
@@ -42,6 +43,7 @@ function SummaryCard({ icon, title, value }) {
 function App() {
   const [data, setData] = useState(null);
   const [analysisHistory, setAnalysisHistory] = useState([]);
+
 
   /*
    * =========================================================
@@ -68,7 +70,7 @@ function App() {
 
   /*
    * =========================================================
-   * SAFE ANALYSIS VALUES
+   * SAFE VALUES
    * =========================================================
    */
 
@@ -76,11 +78,19 @@ function App() {
     data?.prediction || "Unknown"
   ).trim();
 
-  const rawConfidence = Number(data?.confidence);
+  const rawConfidence = Number(
+    data?.confidence
+  );
 
-  const confidence = Number.isFinite(rawConfidence)
-    ? Math.max(0, Math.min(100, rawConfidence))
+  const confidence = Number.isFinite(
+    rawConfidence
+  )
+    ? Math.max(
+        0,
+        Math.min(100, rawConfidence)
+      )
     : 0;
+
 
   const rawSymbolicConfidence = Number(
     data?.symbolic_confidence ??
@@ -88,16 +98,23 @@ function App() {
       0
   );
 
-  const symbolicConfidence = Number.isFinite(
-    rawSymbolicConfidence
-  )
-    ? Math.max(0, Math.min(100, rawSymbolicConfidence))
-    : 0;
+  const symbolicConfidence =
+    Number.isFinite(
+      rawSymbolicConfidence
+    )
+      ? Math.max(
+          0,
+          Math.min(
+            100,
+            rawSymbolicConfidence
+          )
+        )
+      : 0;
 
 
   /*
    * =========================================================
-   * NORMAL / MALICIOUS CLASSIFICATION
+   * NORMAL / MALICIOUS
    * =========================================================
    */
 
@@ -110,8 +127,11 @@ function App() {
    * =========================================================
    * THREAT LEVEL
    *
-   * Confidence alone must NOT determine threat level.
-   * A 99% confidence Normal prediction is LOW risk.
+   * Confidence represents model certainty.
+   * Threat level represents security risk.
+   *
+   * Therefore:
+   * Normal + 99% confidence = LOW threat.
    * =========================================================
    */
 
@@ -141,12 +161,13 @@ function App() {
 
   /*
    * =========================================================
-   * ANALYSIS METADATA
+   * ANALYSIS INFORMATION
    * =========================================================
    */
 
   const filename =
-    data?.filename || "Network traffic analysis";
+    data?.filename ||
+    "Network traffic analysis";
 
   const rowsProcessed =
     Number(data?.rows_processed) ||
@@ -159,7 +180,7 @@ function App() {
 
   /*
    * =========================================================
-   * ANALYSIS HISTORY STATISTICS
+   * ANALYSIS HISTORY
    * =========================================================
    */
 
@@ -169,17 +190,22 @@ function App() {
   const maliciousAnalyses =
     analysisHistory.filter(
       (item) =>
-        String(item?.prediction || "")
-          .toLowerCase() !== "normal"
+        String(
+          item?.prediction || ""
+        ).toLowerCase() !== "normal"
     ).length;
 
   const normalAnalyses =
-    totalAnalyses - maliciousAnalyses;
+    totalAnalyses -
+    maliciousAnalyses;
+
 
   const highRiskAnalyses =
     analysisHistory.filter((item) => {
       const itemPrediction =
-        String(item?.prediction || "").toLowerCase();
+        String(
+          item?.prediction || ""
+        ).toLowerCase();
 
       const itemConfidence =
         Number(item?.confidence) || 0;
@@ -190,18 +216,26 @@ function App() {
       );
     }).length;
 
+
   const averageConfidence =
     totalAnalyses > 0
       ? analysisHistory.reduce(
           (sum, item) =>
-            sum + (Number(item?.confidence) || 0),
+            sum +
+            (Number(
+              item?.confidence
+            ) || 0),
           0
         ) / totalAnalyses
       : 0;
 
+
   const maliciousRate =
     totalAnalyses > 0
-      ? (maliciousAnalyses / totalAnalyses) * 100
+      ? (
+          maliciousAnalyses /
+          totalAnalyses
+        ) * 100
       : 0;
 
 
@@ -215,10 +249,12 @@ function App() {
     analysisHistory.reduce(
       (distribution, item) => {
         const label =
-          item?.prediction || "Unknown";
+          item?.prediction ||
+          "Unknown";
 
         distribution[label] =
-          (distribution[label] || 0) + 1;
+          (distribution[label] || 0) +
+          1;
 
         return distribution;
       },
@@ -235,10 +271,13 @@ function App() {
   const confidenceHistory =
     analysisHistory.map((item) => ({
       prediction:
-        item?.prediction || "Unknown",
+        item?.prediction ||
+        "Unknown",
 
       confidence:
-        Number(item?.confidence) || 0,
+        Number(
+          item?.confidence
+        ) || 0,
     }));
 
 
@@ -251,10 +290,19 @@ function App() {
   return (
     <div className="app">
 
-      {/* Header already contains the System Online
-          and AEGIS-NSAI hero sections. */}
+      {/* Header already contains:
+          System Online
+          AI Engine
+          Date/Time
+          AEGIS-NSAI branding
+      */}
 
-      <Header />
+      <Header
+        totalAnalyses={
+          totalAnalyses
+        }
+      />
+
 
       <main className="dashboard-container">
 
@@ -263,12 +311,14 @@ function App() {
         ================================================= */}
 
         <FileUpload
-          onPrediction={handlePrediction}
+          onPrediction={
+            handlePrediction
+          }
         />
 
 
         {/* =================================================
-            ANALYSIS RESULTS
+            RESULTS
         ================================================= */}
 
         {data && (
@@ -280,7 +330,9 @@ function App() {
 
             <section className="current-analysis">
 
-              <h2>CURRENT ANALYSIS</h2>
+              <h2>
+                CURRENT ANALYSIS
+              </h2>
 
               <h3>
                 {filename}
@@ -302,39 +354,64 @@ function App() {
             <section className="summary-grid">
 
               <SummaryCard
-                icon={<FaShieldAlt />}
+                icon={
+                  <FaShieldAlt />
+                }
                 title="Prediction"
-                value={prediction}
+                value={
+                  prediction
+                }
               />
 
+
               <SummaryCard
-                icon={<FaChartLine />}
+                icon={
+                  <FaChartLine />
+                }
                 title="Confidence"
-                value={`${confidence.toFixed(2)}%`}
+                value={`${confidence.toFixed(
+                  2
+                )}%`}
               />
 
+
               <SummaryCard
-                icon={<FaBrain />}
+                icon={
+                  <FaBrain />
+                }
                 title="AI Engine"
                 value="Neuro-Symbolic"
               />
 
+
               <SummaryCard
-                icon={<FaProjectDiagram />}
+                icon={
+                  <FaProjectDiagram />
+                }
                 title="Risk Score"
                 value={`${riskScore}/100`}
               />
 
-              <SummaryCard
-                icon={<FaClock />}
-                title="Detection Time"
-                value={detectionTime}
-              />
 
               <SummaryCard
-                icon={<FaShieldAlt />}
+                icon={
+                  <FaClock />
+                }
+                title="Detection Time"
+                value={
+                  detectionTime
+                }
+              />
+
+
+              <SummaryCard
+                icon={
+                  <FaShieldAlt />
+                }
                 title="Threat Level"
-                value={threatLevel}
+                value={
+                  threatLevel
+                }
               />
 
             </section>
@@ -347,15 +424,28 @@ function App() {
             <section className="result-grid">
 
               <PredictionCard
-                prediction={prediction}
-                confidence={confidence}
-                threatLevel={threatLevel}
-                severity={threatLevel}
+                prediction={
+                  prediction
+                }
+                confidence={
+                  confidence
+                }
+                threatLevel={
+                  threatLevel
+                }
+                severity={
+                  threatLevel
+                }
               />
 
+
               <ConfidenceBar
-                confidence={confidence}
-                prediction={prediction}
+                confidence={
+                  confidence
+                }
+                prediction={
+                  prediction
+                }
               />
 
             </section>
@@ -366,9 +456,15 @@ function App() {
             ================================================= */}
 
             <ExplanationCard
-              prediction={prediction}
-              confidence={confidence}
-              message={data?.message}
+              prediction={
+                prediction
+              }
+              confidence={
+                confidence
+              }
+              message={
+                data?.message
+              }
               symbolicConfidence={
                 symbolicConfidence
               }
@@ -386,9 +482,12 @@ function App() {
             ================================================= */}
 
             <KnowledgeGraph
-              prediction={prediction}
+              prediction={
+                prediction
+              }
               nodes={
-                data?.knowledge_graph || []
+                data?.knowledge_graph ||
+                []
               }
               symbolicExplanation={
                 data?.symbolic_explanation
@@ -423,9 +522,15 @@ function App() {
             ================================================= */}
 
             <ThreatRecommendation
-              prediction={prediction}
-              confidence={confidence}
-              threatLevel={threatLevel}
+              prediction={
+                prediction
+              }
+              confidence={
+                confidence
+              }
+              threatLevel={
+                threatLevel
+              }
               symbolicConfidence={
                 symbolicConfidence
               }
@@ -438,10 +543,18 @@ function App() {
 
             <DownloadReport
               data={data}
-              prediction={prediction}
-              confidence={confidence}
-              threatLevel={threatLevel}
-              riskScore={riskScore}
+              prediction={
+                prediction
+              }
+              confidence={
+                confidence
+              }
+              threatLevel={
+                threatLevel
+              }
+              riskScore={
+                riskScore
+              }
             />
 
 
@@ -482,19 +595,29 @@ function App() {
             ================================================= */}
 
             <AttackChart
-              data={attackDistribution}
-              prediction={prediction}
+              data={
+                attackDistribution
+              }
+              prediction={
+                prediction
+              }
             />
 
 
             {/* =================================================
-                CONFIDENCE CHART
+                CONFIDENCE HISTORY
             ================================================= */}
 
             <ConfidenceChart
-              prediction={prediction}
-              confidence={confidence}
-              data={confidenceHistory}
+              prediction={
+                prediction
+              }
+              confidence={
+                confidence
+              }
+              data={
+                confidenceHistory
+              }
             />
 
 
@@ -503,7 +626,9 @@ function App() {
             ================================================= */}
 
             <RecentLogs
-              logs={analysisHistory}
+              logs={
+                analysisHistory
+              }
             />
 
           </>
@@ -513,5 +638,6 @@ function App() {
     </div>
   );
 }
+
 
 export default App;
