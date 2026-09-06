@@ -1,4 +1,14 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+
+import {
+  FaShieldAlt,
+  FaNetworkWired,
+  FaChartLine,
+  FaBrain,
+  FaProjectDiagram,
+  FaClock,
+  FaExclamationTriangle,
+} from "react-icons/fa";
 
 import Header from "./components/Header";
 import FileUpload from "./components/FileUpload";
@@ -7,637 +17,722 @@ import ConfidenceBar from "./components/ConfidenceBar";
 import ExplanationCard from "./components/ExplanationCard";
 import KnowledgeGraph from "./components/KnowledgeGraph";
 import ThreatRecommendation from "./components/ThreatRecommendation";
+import DownloadReport from "./components/DownloadReport";
 import AttackAnalytics from "./components/AttackAnalytics";
 import AttackChart from "./components/AttackChart";
 import ConfidenceChart from "./components/ConfidenceChart";
 import RecentLogs from "./components/RecentLogs";
-import DownloadReport from "./components/DownloadReport";
-
-import {
-  FaShieldAlt,
-  FaChartLine,
-  FaBrain,
-  FaClock,
-  FaProjectDiagram,
-} from "react-icons/fa";
 
 import "./App.css";
 
 
-function SummaryCard({ icon, title, value }) {
-  return (
-    <div className="summary-card">
-      <div className="summary-card-header">
-        <span>{title}</span>
-        <span className="summary-card-icon">{icon}</span>
-      </div>
-
-      <div className="summary-card-value">
-        {value}
-      </div>
-    </div>
-  );
-}
-
-
 function App() {
+  /* =========================================================
+     STATE
+  ========================================================= */
+
   const [data, setData] = useState(null);
+
   const [analysisHistory, setAnalysisHistory] = useState([]);
 
+  const [currentTime, setCurrentTime] = useState(
+    new Date()
+  );
 
-  /*
-   * =========================================================
-   * RECEIVE BACKEND RESULT
-   * =========================================================
-   */
+
+  /* =========================================================
+     CLOCK
+  ========================================================= */
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+
+  /* =========================================================
+     LOAD PREVIOUS ANALYSIS HISTORY
+  ========================================================= */
+
+  useEffect(() => {
+    try {
+      const stored =
+        localStorage.getItem("aegis_analysis_history");
+
+      if (stored) {
+        const parsed = JSON.parse(stored);
+
+        if (Array.isArray(parsed)) {
+          setAnalysisHistory(parsed);
+        }
+      }
+    } catch (error) {
+      console.error(
+        "Unable to load analysis history:",
+        error
+      );
+    }
+  }, []);
+
+
+  /* =========================================================
+     SAVE HISTORY
+  ========================================================= */
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        "aegis_analysis_history",
+        JSON.stringify(analysisHistory)
+      );
+    } catch (error) {
+      console.error(
+        "Unable to save analysis history:",
+        error
+      );
+    }
+  }, [analysisHistory]);
+
+
+  /* =========================================================
+     HANDLE NEW ANALYSIS
+  ========================================================= */
 
   const handlePrediction = (result) => {
-    if (!result) {
+    if (!result || !result.prediction) {
+      console.error(
+        "Invalid prediction result:",
+        result
+      );
       return;
     }
+
+    const normalizedPrediction =
+      String(result.prediction).trim();
+
+    const confidence =
+      Number(result.confidence) || 0;
+
+    const timestamp =
+      new Date().toLocaleTimeString("en-GB", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      });
+
+    const filename =
+      result.filename || "Uploaded CSV";
+
+    const historyItem = {
+      id: `DET-${String(
+        analysisHistory.length + 1
+      ).padStart(3, "0")}`,
+
+      prediction:
+        normalizedPrediction,
+
+      confidence,
+
+      filename,
+
+      timestamp,
+
+      threatLevel:
+        normalizedPrediction === "Normal"
+          ? "Low"
+          : confidence >= 80
+          ? "Critical"
+          : confidence >= 60
+          ? "High"
+          : confidence >= 30
+          ? "Medium"
+          : "Low",
+
+      status: "ANALYZED",
+    };
 
     setData(result);
 
     setAnalysisHistory((previous) => [
       ...previous,
-      {
-        ...result,
-        timestamp: new Date().toLocaleTimeString(),
-      },
+      historyItem,
     ]);
   };
 
 
-  /*
-   * =========================================================
-   * SAFE VALUES
-   * =========================================================
-   */
+  /* =========================================================
+     RESET ANALYSIS
+  ========================================================= */
 
-  const prediction = String(
-    data?.prediction || "Unknown"
-  ).trim();
-
-  const rawConfidence = Number(
-    data?.confidence
-  );
-
-  const confidence = Number.isFinite(
-    rawConfidence
-  )
-    ? Math.max(
-        0,
-        Math.min(100, rawConfidence)
-      )
-    : 0;
+  const handleReset = () => {
+    setData(null);
+  };
 
 
-  const rawSymbolicConfidence = Number(
-    data?.symbolic_confidence ??
-      data?.symbolic_support ??
-      0
-  );
+  /* =========================================================
+     DERIVED VALUES
+  ========================================================= */
 
-  const symbolicConfidence =
-    Number.isFinite(
-      rawSymbolicConfidence
-    )
-      ? Math.max(
-          0,
-          Math.min(
-            100,
-            rawSymbolicConfidence
-          )
-        )
-      : 0;
+  const prediction =
+    data?.prediction
+      ? String(data.prediction).trim()
+      : "";
 
-
-  /*
-   * =========================================================
-   * NORMAL / MALICIOUS
-   * =========================================================
-   */
+  const confidence =
+    Number(data?.confidence) || 0;
 
   const isNormal =
-    prediction.toLowerCase() === "normal" ||
-    prediction.toLowerCase() === "benign";
-
-
-  /*
-   * =========================================================
-   * THREAT LEVEL
-   *
-   * Confidence represents model certainty.
-   * Threat level represents security risk.
-   *
-   * Therefore:
-   * Normal + 99% confidence = LOW threat.
-   * =========================================================
-   */
-
-  let threatLevel = "Low";
-
-  if (!isNormal) {
-    if (confidence >= 80) {
-      threatLevel = "Critical";
-    } else if (confidence >= 60) {
-      threatLevel = "High";
-    } else if (confidence >= 30) {
-      threatLevel = "Medium";
-    }
-  }
-
-
-  /*
-   * =========================================================
-   * RISK SCORE
-   * =========================================================
-   */
-
-  const riskScore = isNormal
-    ? 0
-    : Math.round(confidence);
-
-
-  /*
-   * =========================================================
-   * ANALYSIS INFORMATION
-   * =========================================================
-   */
-
-  const filename =
-    data?.filename ||
-    "Network traffic analysis";
-
-  const rowsProcessed =
-    Number(data?.rows_processed) ||
-    Number(data?.symbolic_rows_evaluated) ||
-    0;
-
-  const detectionTime =
-    new Date().toLocaleTimeString();
-
-
-  /*
-   * =========================================================
-   * ANALYSIS HISTORY
-   * =========================================================
-   */
+    prediction === "Normal";
 
   const totalAnalyses =
     analysisHistory.length;
 
-  const maliciousAnalyses =
-    analysisHistory.filter(
-      (item) =>
-        String(
-          item?.prediction || ""
-        ).toLowerCase() !== "normal"
-    ).length;
 
-  const normalAnalyses =
-    totalAnalyses -
-    maliciousAnalyses;
+  /* =========================================================
+     THREAT LEVEL
+  ========================================================= */
 
+  const threatLevel = useMemo(() => {
+    if (!data) {
+      return "Low";
+    }
 
-  const highRiskAnalyses =
-    analysisHistory.filter((item) => {
-      const itemPrediction =
-        String(
-          item?.prediction || ""
-        ).toLowerCase();
+    if (isNormal) {
+      return "Low";
+    }
 
-      const itemConfidence =
-        Number(item?.confidence) || 0;
+    if (confidence >= 80) {
+      return "Critical";
+    }
 
-      return (
-        itemPrediction !== "normal" &&
-        itemConfidence >= 80
-      );
-    }).length;
+    if (confidence >= 60) {
+      return "High";
+    }
 
+    if (confidence >= 30) {
+      return "Medium";
+    }
 
-  const averageConfidence =
-    totalAnalyses > 0
-      ? analysisHistory.reduce(
-          (sum, item) =>
-            sum +
-            (Number(
-              item?.confidence
-            ) || 0),
-          0
-        ) / totalAnalyses
-      : 0;
+    return "Low";
+  }, [
+    data,
+    isNormal,
+    confidence,
+  ]);
 
 
-  const maliciousRate =
-    totalAnalyses > 0
-      ? (
-          maliciousAnalyses /
-          totalAnalyses
-        ) * 100
-      : 0;
+  /* =========================================================
+     RISK SCORE
+  ========================================================= */
+
+  const riskScore =
+    isNormal
+      ? 0
+      : Math.round(confidence);
 
 
-  /*
-   * =========================================================
-   * ATTACK DISTRIBUTION
-   * =========================================================
-   */
+  /* =========================================================
+     ATTACK DESCRIPTION
+  ========================================================= */
 
-  const attackDistribution =
-    analysisHistory.reduce(
-      (distribution, item) => {
-        const label =
-          item?.prediction ||
-          "Unknown";
-
-        distribution[label] =
-          (distribution[label] || 0) +
-          1;
-
-        return distribution;
-      },
-      {}
+  const attackDescription =
+    data?.attack_description ||
+    data?.description ||
+    (
+      isNormal
+        ? "Normal network activity with no malicious behaviour detected."
+        : `The detected traffic has been classified as ${prediction} based on learned network behaviour and symbolic rule evaluation.`
     );
 
 
-  /*
-   * =========================================================
-   * CONFIDENCE HISTORY
-   * =========================================================
-   */
+  /* =========================================================
+     DETECTION TIME
+  ========================================================= */
 
-  const confidenceHistory =
-    analysisHistory.map((item) => ({
-      prediction:
-        item?.prediction ||
-        "Unknown",
+  const detectionTime =
+    data?.detection_time ||
+    data?.analysis_time ||
+    currentTime.toLocaleTimeString(
+      "en-GB",
+      {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      }
+    );
 
-      confidence:
-        Number(
-          item?.confidence
-        ) || 0,
-    }));
+
+  /* =========================================================
+     SYMBOLIC VALUES
+  ========================================================= */
+
+  const symbolicConfidence =
+    Number(
+      data?.symbolic_confidence ??
+      data?.symbolic_support ??
+      0
+    ) || 0;
+
+  const symbolicSupport =
+    Number(
+      data?.symbolic_support ??
+      data?.symbolic_confidence ??
+      0
+    ) || 0;
+
+  const symbolicExplanation =
+    data?.symbolic_explanation ||
+    (
+      isNormal
+        ? "Network traffic appears normal with no strong symbolic indicators of malicious activity."
+        : "Symbolic rules provide behavioural evidence associated with the detected network activity."
+    );
 
 
-  /*
-   * =========================================================
-   * RENDER
-   * =========================================================
-   */
+  /* =========================================================
+     KNOWLEDGE GRAPH DATA
+  ========================================================= */
+
+  const knowledgeGraph =
+    Array.isArray(data?.knowledge_graph)
+      ? data.knowledge_graph
+      : isNormal
+      ? [
+          "Normal Traffic",
+          "No Malicious Activity",
+        ]
+      : [
+          "Detected Threat",
+          "Suspicious Network Activity",
+        ];
+
+
+  /* =========================================================
+     CURRENT ANALYSIS INFORMATION
+  ========================================================= */
+
+  const rowsProcessed =
+    Number(
+      data?.rows_processed ??
+      data?.symbolic_rows_evaluated ??
+      0
+    ) || 0;
+
+
+  /* =========================================================
+     MAIN UI
+  ========================================================= */
 
   return (
     <div className="app">
 
-      {/* Header already contains:
-          System Online
-          AI Engine
-          Date/Time
-          AEGIS-NSAI branding
-      */}
+      {/* =====================================================
+          HEADER
+      ===================================================== */}
 
       <Header
-        totalAnalyses={
-          totalAnalyses
-        }
+        totalAnalyses={totalAnalyses}
       />
 
 
-      <main className="dashboard-container">
+      {/* =====================================================
+          HERO
+      ===================================================== */}
 
-        {/* =================================================
-            FILE UPLOAD
-        ================================================= */}
+      <main className="main-content">
 
-        <FileUpload
-          onPrediction={
-            handlePrediction
-          }
-        />
+        <section
+          className="hero-section"
+        >
+          <div
+            className="hero-icon"
+          >
+            <FaShieldAlt />
+          </div>
+
+          <h1>
+            AEGIS-NSAI
+          </h1>
+
+          <p>
+            Neuro-Symbolic Intrusion Detection System
+          </p>
+
+          <div
+            className="version-badge"
+          >
+            Version 1.0 · CSV Network Analysis
+          </div>
+        </section>
 
 
-        {/* =================================================
-            RESULTS
-        ================================================= */}
+        {/* ===================================================
+            UPLOAD
+        =================================================== */}
+
+        <section className="dashboard-section">
+          <FileUpload
+            onPrediction={handlePrediction}
+            onReset={handleReset}
+          />
+        </section>
+
+
+        {/* ===================================================
+            ANALYSIS RESULTS
+        =================================================== */}
 
         {data && (
+
           <>
 
-            {/* =================================================
+            {/* ===============================================
                 CURRENT ANALYSIS
-            ================================================= */}
+            =============================================== */}
 
-            <section className="current-analysis">
-
-              <h2>
+            <section
+              className="current-analysis-card"
+            >
+              <div className="section-title">
                 CURRENT ANALYSIS
-              </h2>
+              </div>
 
-              <h3>
-                {filename}
-              </h3>
+              <div
+                className="current-file-name"
+              >
+                {data.filename ||
+                  "Uploaded Network Traffic"}
+              </div>
 
-              <p>
-                {rowsProcessed.toLocaleString()}
-                {" "}
+              <div
+                className="current-file-meta"
+              >
+                {rowsProcessed.toLocaleString()}{" "}
                 network-flow rows analyzed
-              </p>
-
+              </div>
             </section>
 
 
-            {/* =================================================
+            {/* ===============================================
                 SUMMARY CARDS
-            ================================================= */}
+            =============================================== */}
 
-            <section className="summary-grid">
+            <section
+              className="summary-grid"
+            >
 
-              <SummaryCard
-                icon={
+              <div className="summary-card">
+                <div className="summary-card-header">
+                  <span>
+                    PREDICTION
+                  </span>
+
                   <FaShieldAlt />
-                }
-                title="Prediction"
-                value={
-                  prediction
-                }
-              />
+                </div>
+
+                <div
+                  className={`summary-value ${
+                    isNormal
+                      ? "normal"
+                      : "danger"
+                  }`}
+                >
+                  {prediction}
+                </div>
+              </div>
 
 
-              <SummaryCard
-                icon={
+              <div className="summary-card">
+                <div className="summary-card-header">
+                  <span>
+                    CONFIDENCE
+                  </span>
+
                   <FaChartLine />
-                }
-                title="Confidence"
-                value={`${confidence.toFixed(
-                  2
-                )}%`}
-              />
+                </div>
+
+                <div className="summary-value">
+                  {confidence.toFixed(2)}%
+                </div>
+              </div>
 
 
-              <SummaryCard
-                icon={
+              <div className="summary-card ai-card">
+                <div className="summary-card-header">
+                  <span>
+                    AI ENGINE
+                  </span>
+
                   <FaBrain />
-                }
-                title="AI Engine"
-                value="Neuro-Symbolic"
-              />
+                </div>
+
+                <div
+                  className="summary-value ai-value"
+                >
+                  Neuro-
+                  <br />
+                  Symbolic
+                </div>
+              </div>
 
 
-              <SummaryCard
-                icon={
+              <div className="summary-card">
+                <div className="summary-card-header">
+                  <span>
+                    RISK SCORE
+                  </span>
+
                   <FaProjectDiagram />
-                }
-                title="Risk Score"
-                value={`${riskScore}/100`}
-              />
+                </div>
+
+                <div
+                  className={`summary-value ${
+                    isNormal
+                      ? "risk-normal"
+                      : "risk-danger"
+                  }`}
+                >
+                  {riskScore}/100
+                </div>
+              </div>
 
 
-              <SummaryCard
-                icon={
+              <div className="summary-card">
+                <div className="summary-card-header">
+                  <span>
+                    DETECTION TIME
+                  </span>
+
                   <FaClock />
-                }
-                title="Detection Time"
-                value={
-                  detectionTime
-                }
-              />
+                </div>
+
+                <div
+                  className="summary-value time-value"
+                >
+                  {detectionTime}
+                </div>
+              </div>
 
 
-              <SummaryCard
-                icon={
-                  <FaShieldAlt />
-                }
-                title="Threat Level"
-                value={
-                  threatLevel
-                }
-              />
+              <div className="summary-card">
+                <div className="summary-card-header">
+                  <span>
+                    THREAT LEVEL
+                  </span>
+
+                  <FaExclamationTriangle />
+                </div>
+
+                <div
+                  className={`summary-value ${
+                    threatLevel === "Low"
+                      ? "threat-low"
+                      : threatLevel === "Medium"
+                      ? "threat-medium"
+                      : threatLevel === "High"
+                      ? "threat-high"
+                      : "threat-critical"
+                  }`}
+                >
+                  {threatLevel}
+                </div>
+              </div>
 
             </section>
 
 
-            {/* =================================================
+            {/* ===============================================
                 PREDICTION + CONFIDENCE
-            ================================================= */}
+            =============================================== */}
 
-            <section className="result-grid">
+            <section
+              className="result-two-column"
+            >
 
               <PredictionCard
-                prediction={
-                  prediction
-                }
-                confidence={
-                  confidence
-                }
-                threatLevel={
-                  threatLevel
-                }
-                severity={
-                  threatLevel
-                }
+                prediction={prediction}
+                confidence={confidence}
+                threatLevel={threatLevel}
               />
 
-
               <ConfidenceBar
-                confidence={
-                  confidence
+                confidence={confidence}
+                prediction={prediction}
+              />
+
+            </section>
+
+
+            {/* ===============================================
+                AI EXPLANATION
+            =============================================== */}
+
+            <section className="dashboard-section">
+
+              <ExplanationCard
+                prediction={prediction}
+                confidence={confidence}
+                message={
+                  data.message ||
+                  ""
                 }
-                prediction={
-                  prediction
+                symbolicConfidence={
+                  symbolicConfidence
+                }
+                symbolicSupport={
+                  symbolicSupport
+                }
+                symbolicExplanation={
+                  symbolicExplanation
                 }
               />
 
             </section>
 
 
-            {/* =================================================
-                AI EXPLANATION
-            ================================================= */}
-
-            <ExplanationCard
-              prediction={
-                prediction
-              }
-              confidence={
-                confidence
-              }
-              message={
-                data?.message
-              }
-              symbolicConfidence={
-                symbolicConfidence
-              }
-              symbolicSupport={
-                symbolicConfidence
-              }
-              symbolicExplanation={
-                data?.symbolic_explanation
-              }
-            />
-
-
-            {/* =================================================
+            {/* ===============================================
                 KNOWLEDGE GRAPH
-            ================================================= */}
+            =============================================== */}
 
-            <KnowledgeGraph
-              prediction={
-                prediction
-              }
-              nodes={
-                data?.knowledge_graph ||
-                []
-              }
-              symbolicExplanation={
-                data?.symbolic_explanation
-              }
-            />
+            <section className="dashboard-section">
+
+              <KnowledgeGraph
+                prediction={prediction}
+                knowledgeGraph={
+                  knowledgeGraph
+                }
+              />
+
+            </section>
 
 
-            {/* =================================================
+            {/* ===============================================
                 ATTACK DESCRIPTION
-            ================================================= */}
+            =============================================== */}
 
-            <section className="attack-description">
-
+            <section
+              className="dashboard-card attack-description"
+            >
               <h2>
                 ATTACK DESCRIPTION
               </h2>
 
               <p>
-                {isNormal
-                  ? "Normal network activity with no malicious behaviour detected."
-                  : (
-                      data?.symbolic_explanation ||
-                      `The network traffic was classified as ${prediction}. Further investigation is recommended.`
-                    )}
+                {attackDescription}
               </p>
+            </section>
+
+
+            {/* ===============================================
+                RECOMMENDATIONS
+            =============================================== */}
+
+            <section className="dashboard-section">
+
+              <ThreatRecommendation
+                prediction={prediction}
+                confidence={confidence}
+                threatLevel={threatLevel}
+              />
 
             </section>
 
 
-            {/* =================================================
-                RECOMMENDED ACTIONS
-            ================================================= */}
+            {/* ===============================================
+                PDF REPORT
+            =============================================== */}
 
-            <ThreatRecommendation
-              prediction={
-                prediction
-              }
-              confidence={
-                confidence
-              }
-              threatLevel={
-                threatLevel
-              }
-              symbolicConfidence={
-                symbolicConfidence
-              }
-            />
+            <section className="dashboard-section">
 
+              <DownloadReport
+                data={data}
+                prediction={prediction}
+                confidence={confidence}
+                threatLevel={threatLevel}
+                riskScore={riskScore}
+                symbolicConfidence={
+                  symbolicConfidence
+                }
+                symbolicSupport={
+                  symbolicSupport
+                }
+              />
 
-            {/* =================================================
-                EXPORT REPORT
-            ================================================= */}
-
-            <DownloadReport
-              data={data}
-              prediction={
-                prediction
-              }
-              confidence={
-                confidence
-              }
-              threatLevel={
-                threatLevel
-              }
-              riskScore={
-                riskScore
-              }
-            />
+            </section>
 
 
-            {/* =================================================
-                ATTACK ANALYTICS
-            ================================================= */}
+            {/* ===============================================
+                ANALYTICS
+            =============================================== */}
 
-            <AttackAnalytics
-              totalAnalyses={
-                totalAnalyses
-              }
-              highRisk={
-                highRiskAnalyses
-              }
-              maliciousDetections={
-                maliciousAnalyses
-              }
-              normalDetections={
-                normalAnalyses
-              }
-              averageConfidence={
-                averageConfidence
-              }
-              maliciousDetectionRate={
-                maliciousRate
-              }
-              latestDetection={
-                prediction
-              }
-              latestConfidence={
-                confidence
-              }
-            />
+            <section className="dashboard-section">
+
+              <AttackAnalytics
+                history={
+                  analysisHistory
+                }
+              />
+
+            </section>
 
 
-            {/* =================================================
+            {/* ===============================================
                 ATTACK DISTRIBUTION
-            ================================================= */}
+            =============================================== */}
 
-            <AttackChart
-              data={
-                attackDistribution
-              }
-              prediction={
-                prediction
-              }
-            />
+            <section className="dashboard-section">
 
+              <AttackChart
+                data={
+                  analysisHistory
+                }
+              />
 
-            {/* =================================================
-                CONFIDENCE HISTORY
-            ================================================= */}
-
-            <ConfidenceChart
-              prediction={
-                prediction
-              }
-              confidence={
-                confidence
-              }
-              data={
-                confidenceHistory
-              }
-            />
+            </section>
 
 
-            {/* =================================================
+            {/* ===============================================
+                CONFIDENCE CHART
+            =============================================== */}
+
+            <section className="dashboard-section">
+
+              <ConfidenceChart
+                data={
+                  analysisHistory
+                }
+              />
+
+            </section>
+
+
+            {/* ===============================================
                 RECENT DETECTIONS
-            ================================================= */}
+            =============================================== */}
 
-            <RecentLogs
-              logs={
-                analysisHistory
-              }
-            />
+            <section className="dashboard-section">
+
+              <RecentLogs
+                logs={
+                  analysisHistory
+                }
+              />
+
+            </section>
 
           </>
+
         )}
 
       </main>
+
     </div>
   );
 }
-
 
 export default App;

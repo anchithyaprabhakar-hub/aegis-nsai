@@ -1,166 +1,247 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
-  FaShieldAlt,
   FaServer,
   FaBrain,
 } from "react-icons/fa";
 
-function Header({ analysisCount }) {
-  const [time, setTime] = useState(new Date());
+function Header({ totalAnalyses = 0 }) {
+  const [currentTime, setCurrentTime] = useState(
+    new Date()
+  );
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setTime(new Date());
+      setCurrentTime(new Date());
     }, 1000);
 
     return () => clearInterval(timer);
   }, []);
 
+  const formattedDate =
+    currentTime.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+
+  const formattedTime =
+    currentTime.toLocaleTimeString("en-GB", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    });
+
   return (
-    <>
-      <div className="topbar">
+    <header
+      style={{
+        width: "100%",
+        boxSizing: "border-box",
+        padding: "28px 38px",
+        marginBottom: "55px",
+      }}
+    >
+      <div
+        style={{
+          width: "100%",
+          minHeight: "125px",
+          boxSizing: "border-box",
+
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+
+          padding: "26px 42px",
+
+          background:
+            "linear-gradient(135deg, #171717 0%, #141414 100%)",
+
+          border:
+            "1px solid rgba(255,255,255,0.14)",
+
+          borderRadius: "24px",
+
+          boxShadow:
+            "0 12px 35px rgba(0,0,0,0.30)",
+        }}
+      >
+
+        {/* =====================================================
+            LEFT SIDE — SYSTEM STATUS
+        ===================================================== */}
 
         <div
-          className="status"
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "15px",
+            gap: "24px",
+            minWidth: "300px",
           }}
         >
-          <span className="status-dot"></span>
 
-          <div>
+          {/* Status indicator */}
+
+          <div
+            style={{
+              width: "18px",
+              height: "18px",
+              minWidth: "18px",
+              borderRadius: "50%",
+              background: "#22c55e",
+
+              boxShadow:
+                "0 0 22px rgba(34,197,94,0.75)",
+            }}
+          />
+
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "8px",
+            }}
+          >
+
             <div
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: "8px",
+                gap: "12px",
+
+                fontSize: "22px",
                 fontWeight: "700",
-                color: "#ffffff",
-                fontSize: "16px",
+                color: "#f5f5f5",
+                letterSpacing: "0.2px",
               }}
             >
-              <FaServer />
-              System Online
+              <FaServer
+                size={21}
+              />
+
+              <span>
+                System Online
+              </span>
             </div>
 
-            <small
+            <div
               style={{
+                fontSize: "16px",
+                fontWeight: "600",
                 color: "#9ca3af",
-                fontSize: "13px",
+                letterSpacing: "0.3px",
               }}
             >
-              Total Analyses : {analysisCount}
-            </small>
+              Total Analyses :{" "}
+              <span
+                style={{
+                  color: "#f5f5f5",
+                  fontWeight: "700",
+                  marginLeft: "5px",
+                }}
+              >
+                {Number(totalAnalyses) || 0}
+              </span>
+            </div>
+
           </div>
         </div>
+
+
+        {/* =====================================================
+            RIGHT SIDE — AI ENGINE + DATE + TIME
+        ===================================================== */}
 
         <div
           style={{
             display: "flex",
-            gap: "30px",
             alignItems: "center",
+            gap: "48px",
           }}
         >
+
+          {/* AI ENGINE */}
+
           <div
             style={{
-              textAlign: "center",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "flex-end",
+              gap: "7px",
             }}
           >
+
             <div
               style={{
+                fontSize: "14px",
                 color: "#9ca3af",
-                fontSize: "12px",
+                fontWeight: "500",
+                letterSpacing: "0.5px",
+                textTransform: "uppercase",
               }}
             >
-              AI ENGINE
+              AI Engine
             </div>
 
             <div
               style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "9px",
+
                 color: "#22c55e",
+                fontSize: "20px",
                 fontWeight: "700",
               }}
             >
-              <FaBrain
-                style={{
-                  marginRight: "6px",
-                }}
-              />
-              ACTIVE
+              <FaBrain size={19} />
+
+              <span>
+                ACTIVE
+              </span>
             </div>
+
           </div>
+
+
+          {/* DATE */}
 
           <div
-            className="time"
             style={{
-              textAlign: "right",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "flex-end",
+              gap: "7px",
             }}
           >
+
             <div
               style={{
+                fontSize: "14px",
                 color: "#9ca3af",
-                fontSize: "13px",
+                fontWeight: "500",
               }}
             >
-              {time.toLocaleDateString()}
+              {formattedDate}
             </div>
 
             <div
               style={{
-                fontSize: "18px",
+                fontSize: "21px",
+                color: "#f5f5f5",
                 fontWeight: "700",
-                color: "#ffffff",
-                marginTop: "4px",
+                fontVariantNumeric:
+                  "tabular-nums",
               }}
             >
-              {time.toLocaleTimeString()}
+              {formattedTime}
             </div>
+
           </div>
+
         </div>
 
       </div>
-
-      <header className="header">
-
-        <div
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "12px",
-          }}
-        >
-          <FaShieldAlt
-            size={40}
-            color="#38bdf8"
-          />
-
-          <h1>AEGIS-NSAI</h1>
-        </div>
-
-        <p className="subtitle">
-          Neuro-Symbolic Intrusion Detection System
-        </p>
-
-        <div
-          style={{
-            marginTop: "18px",
-            display: "inline-block",
-            background: "#171717",
-            border: "1px solid #2b2b2b",
-            borderRadius: "20px",
-            padding: "8px 18px",
-            color: "#22c55e",
-            fontSize: "14px",
-            fontWeight: "600",
-          }}
-        >
-          Version 1.0 • CSV Network Analysis
-        </div>
-
-      </header>
-    </>
+    </header>
   );
 }
 
