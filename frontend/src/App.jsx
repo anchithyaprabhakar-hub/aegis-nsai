@@ -35,9 +35,7 @@ function App() {
 
   const [analysisHistory, setAnalysisHistory] = useState([]);
 
-  const [currentTime, setCurrentTime] = useState(
-    new Date()
-  );
+  const [currentTime, setCurrentTime] = useState(new Date());
 
 
   /* =========================================================
@@ -59,8 +57,9 @@ function App() {
 
   useEffect(() => {
     try {
-      const stored =
-        localStorage.getItem("aegis_analysis_history");
+      const stored = localStorage.getItem(
+        "aegis_analysis_history"
+      );
 
       if (stored) {
         const parsed = JSON.parse(stored);
@@ -332,7 +331,7 @@ function App() {
     <div className="app">
 
       {/* =====================================================
-          HEADER
+          SYSTEM HEADER
       ===================================================== */}
 
       <Header
@@ -341,45 +340,80 @@ function App() {
 
 
       {/* =====================================================
-          HERO
+          MAIN CONTENT
       ===================================================== */}
 
       <main className="main-content">
 
+        {/* ===================================================
+            COMPACT HERO / LANDING AREA
+        =================================================== */}
+
         <section
-          className="hero-section"
+          className="hero-section landing-hero"
+          style={{
+            minHeight: "320px",
+            height: "320px",
+            padding: "20px 20px 25px",
+            justifyContent: "center",
+          }}
         >
+
           <div
             className="hero-icon"
+            style={{
+              fontSize: "34px",
+              marginBottom: "10px",
+            }}
           >
             <FaShieldAlt />
           </div>
 
-          <h1>
+          <h1
+            style={{
+              margin: 0,
+            }}
+          >
             AEGIS-NSAI
           </h1>
 
-          <p>
+          <p
+            style={{
+              margin: "16px 0 0",
+            }}
+          >
             Neuro-Symbolic Intrusion Detection System
           </p>
 
           <div
             className="version-badge"
+            style={{
+              marginTop: "16px",
+            }}
           >
             Version 1.0 · CSV Network Analysis
           </div>
+
         </section>
 
 
         {/* ===================================================
-            UPLOAD
+            CSV UPLOAD
         =================================================== */}
 
-        <section className="dashboard-section">
+        <section
+          className="dashboard-section upload-section"
+          style={{
+            marginTop: "0",
+            marginBottom: "25px",
+          }}
+        >
+
           <FileUpload
             onPrediction={handlePrediction}
             onReset={handleReset}
           />
+
         </section>
 
 
@@ -388,7 +422,6 @@ function App() {
         =================================================== */}
 
         {data && (
-
           <>
 
             {/* ===============================================
@@ -398,23 +431,21 @@ function App() {
             <section
               className="current-analysis-card"
             >
+
               <div className="section-title">
                 CURRENT ANALYSIS
               </div>
 
-              <div
-                className="current-file-name"
-              >
+              <div className="current-file-name">
                 {data.filename ||
                   "Uploaded Network Traffic"}
               </div>
 
-              <div
-                className="current-file-meta"
-              >
+              <div className="current-file-meta">
                 {rowsProcessed.toLocaleString()}{" "}
                 network-flow rows analyzed
               </div>
+
             </section>
 
 
@@ -422,17 +453,22 @@ function App() {
                 SUMMARY CARDS
             =============================================== */}
 
-            <section
-              className="summary-grid"
-            >
+            <section className="summary-grid">
+
+              {/* ---------------------------------------------
+                  PREDICTION
+              --------------------------------------------- */}
 
               <div className="summary-card">
+
                 <div className="summary-card-header">
+
                   <span>
                     PREDICTION
                   </span>
 
                   <FaShieldAlt />
+
                 </div>
 
                 <div
@@ -444,50 +480,74 @@ function App() {
                 >
                   {prediction}
                 </div>
+
               </div>
 
 
+              {/* ---------------------------------------------
+                  CONFIDENCE
+              --------------------------------------------- */}
+
               <div className="summary-card">
+
                 <div className="summary-card-header">
+
                   <span>
                     CONFIDENCE
                   </span>
 
                   <FaChartLine />
+
                 </div>
 
                 <div className="summary-value">
                   {confidence.toFixed(2)}%
                 </div>
+
               </div>
 
 
+              {/* ---------------------------------------------
+                  AI ENGINE
+              --------------------------------------------- */}
+
               <div className="summary-card ai-card">
+
                 <div className="summary-card-header">
+
                   <span>
                     AI ENGINE
                   </span>
 
                   <FaBrain />
+
                 </div>
 
-                <div
-                  className="summary-value ai-value"
-                >
+                <div className="summary-value ai-value">
+
                   Neuro-
                   <br />
                   Symbolic
+
                 </div>
+
               </div>
 
 
+              {/* ---------------------------------------------
+                  RISK SCORE
+              --------------------------------------------- */}
+
               <div className="summary-card">
+
                 <div className="summary-card-header">
+
                   <span>
                     RISK SCORE
                   </span>
 
                   <FaProjectDiagram />
+
                 </div>
 
                 <div
@@ -499,33 +559,49 @@ function App() {
                 >
                   {riskScore}/100
                 </div>
+
               </div>
 
 
+              {/* ---------------------------------------------
+                  DETECTION TIME
+              --------------------------------------------- */}
+
               <div className="summary-card">
+
                 <div className="summary-card-header">
+
                   <span>
                     DETECTION TIME
                   </span>
 
                   <FaClock />
+
                 </div>
 
-                <div
-                  className="summary-value time-value"
-                >
+                <div className="summary-value time-value">
+
                   {detectionTime}
+
                 </div>
+
               </div>
 
 
+              {/* ---------------------------------------------
+                  THREAT LEVEL
+              --------------------------------------------- */}
+
               <div className="summary-card">
+
                 <div className="summary-card-header">
+
                   <span>
                     THREAT LEVEL
                   </span>
 
                   <FaExclamationTriangle />
+
                 </div>
 
                 <div
@@ -541,6 +617,7 @@ function App() {
                 >
                   {threatLevel}
                 </div>
+
               </div>
 
             </section>
@@ -550,9 +627,7 @@ function App() {
                 PREDICTION + CONFIDENCE
             =============================================== */}
 
-            <section
-              className="result-two-column"
-            >
+            <section className="result-two-column">
 
               <PredictionCard
                 prediction={prediction}
@@ -578,8 +653,7 @@ function App() {
                 prediction={prediction}
                 confidence={confidence}
                 message={
-                  data.message ||
-                  ""
+                  data.message || ""
                 }
                 symbolicConfidence={
                   symbolicConfidence
@@ -618,6 +692,7 @@ function App() {
             <section
               className="dashboard-card attack-description"
             >
+
               <h2>
                 ATTACK DESCRIPTION
               </h2>
@@ -625,11 +700,12 @@ function App() {
               <p>
                 {attackDescription}
               </p>
+
             </section>
 
 
             {/* ===============================================
-                RECOMMENDATIONS
+                RECOMMENDED ACTIONS
             =============================================== */}
 
             <section className="dashboard-section">
@@ -667,7 +743,7 @@ function App() {
 
 
             {/* ===============================================
-                ANALYTICS
+                ATTACK ANALYTICS
             =============================================== */}
 
             <section className="dashboard-section">
@@ -726,7 +802,6 @@ function App() {
             </section>
 
           </>
-
         )}
 
       </main>
