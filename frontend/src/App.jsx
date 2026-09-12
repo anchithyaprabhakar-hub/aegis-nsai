@@ -673,7 +673,7 @@ function App() {
             <section className="dashboard-section">
 
               <AttackAnalytics
-                history={
+                logs={
                   analysisHistory
                 }
               />
