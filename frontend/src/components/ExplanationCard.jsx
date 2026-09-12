@@ -4,6 +4,7 @@ import {
   FaInfoCircle,
 } from "react-icons/fa";
 
+
 function ExplanationCard({
   prediction,
   confidence,
@@ -12,9 +13,26 @@ function ExplanationCard({
   symbolicSupport,
   symbolicExplanation,
 }) {
-  const mlConfidence = Number(confidence) || 0;
+  const mlConfidence =
+    Number(confidence) || 0;
+
+  /*
+   * Symbolic support is behavioural/rule evidence.
+   * It is not a statistical probability.
+   *
+   * Keep support as the primary value because the backend
+   * exposes symbolic_support for this purpose.
+   */
   const symbolicEvidence =
-    Number(symbolicSupport ?? symbolicConfidence) || 0;
+    Number(
+      symbolicSupport ??
+      symbolicConfidence
+    ) || 0;
+
+
+  /* =========================================================
+     DECISION SUMMARY
+  ========================================================= */
 
   const getDecisionSummary = () => {
     if (
@@ -22,18 +40,33 @@ function ExplanationCard({
       prediction !== "Normal" &&
       prediction !== "Benign"
     ) {
-      return "The neural network identified the dominant attack pattern, while symbolic rules provided supporting behavioural evidence.";
+      return (
+        "The neural network identified the dominant attack pattern, "
+        + "while symbolic rules provided supporting behavioural evidence."
+      );
     }
 
     if (
       prediction === "Normal" ||
       prediction === "Benign"
     ) {
-      return "The uploaded traffic was classified as normal network behaviour. Symbolic rules did not provide sufficient attack support to override the neural prediction.";
+      return (
+        "The uploaded traffic was classified as normal network behaviour. "
+        + "Symbolic rules did not provide sufficient attack support to "
+        + "override the neural prediction."
+      );
     }
 
-    return "The final classification is based on the combined neural prediction and symbolic reasoning components.";
+    return (
+      "The final classification is based on the combined neural "
+      + "prediction and symbolic reasoning components."
+    );
   };
+
+
+  /* =========================================================
+     RENDER
+  ========================================================= */
 
   return (
     <div
@@ -42,13 +75,19 @@ function ExplanationCard({
         gridColumn: "1 / span 2",
       }}
     >
+
+      {/* =====================================================
+          HEADER
+      ===================================================== */}
+
       <h3>
         <FaBrain /> AI Explanation
       </h3>
 
-      {/* ======================================================
+
+      {/* =====================================================
           DETECTION SUMMARY
-      ====================================================== */}
+      ===================================================== */}
 
       <div
         style={{
@@ -59,6 +98,7 @@ function ExplanationCard({
           border: "1px solid #2c2c2c",
         }}
       >
+
         <p
           style={{
             margin: 0,
@@ -66,7 +106,11 @@ function ExplanationCard({
             lineHeight: "1.7",
           }}
         >
-          <strong>Final Detection:</strong>{" "}
+
+          <strong>
+            Final Detection:
+          </strong>{" "}
+
           <span
             style={{
               color: "#38bdf8",
@@ -75,7 +119,9 @@ function ExplanationCard({
           >
             {prediction || "Unknown"}
           </span>
+
         </p>
+
 
         <p
           style={{
@@ -87,11 +133,13 @@ function ExplanationCard({
         >
           {getDecisionSummary()}
         </p>
+
       </div>
 
-      {/* ======================================================
+
+      {/* =====================================================
           NEURO-SYMBOLIC EVIDENCE
-      ====================================================== */}
+      ===================================================== */}
 
       <div
         style={{
@@ -102,6 +150,11 @@ function ExplanationCard({
           marginTop: "16px",
         }}
       >
+
+        {/* ---------------------------------------------------
+            NEURAL CONFIDENCE
+        --------------------------------------------------- */}
+
         <div
           style={{
             padding: "14px",
@@ -110,6 +163,7 @@ function ExplanationCard({
             border: "1px solid #2c2c2c",
           }}
         >
+
           <FaBrain
             style={{
               marginRight: "8px",
@@ -117,7 +171,9 @@ function ExplanationCard({
             }}
           />
 
-          <strong>Neural Confidence</strong>
+          <strong>
+            Neural Confidence
+          </strong>
 
           <div
             style={{
@@ -128,7 +184,13 @@ function ExplanationCard({
           >
             {mlConfidence.toFixed(2)}%
           </div>
+
         </div>
+
+
+        {/* ---------------------------------------------------
+            SYMBOLIC SUPPORT
+        --------------------------------------------------- */}
 
         <div
           style={{
@@ -138,6 +200,7 @@ function ExplanationCard({
             border: "1px solid #2c2c2c",
           }}
         >
+
           <FaProjectDiagram
             style={{
               marginRight: "8px",
@@ -145,7 +208,9 @@ function ExplanationCard({
             }}
           />
 
-          <strong>Symbolic Evidence</strong>
+          <strong>
+            Symbolic Rule Support
+          </strong>
 
           <div
             style={{
@@ -156,12 +221,26 @@ function ExplanationCard({
           >
             {symbolicEvidence.toFixed(2)}%
           </div>
+
+          <div
+            style={{
+              marginTop: "5px",
+              color: "#8f8f8f",
+              fontSize: "12px",
+              lineHeight: "1.5",
+            }}
+          >
+            Behavioural rule evidence
+          </div>
+
         </div>
+
       </div>
 
-      {/* ======================================================
+
+      {/* =====================================================
           SYMBOLIC EXPLANATION
-      ====================================================== */}
+      ===================================================== */}
 
       {symbolicExplanation && (
         <div
@@ -173,20 +252,25 @@ function ExplanationCard({
             border: "1px solid #2c2c2c",
           }}
         >
+
           <p
             style={{
               margin: 0,
               fontWeight: "700",
             }}
           >
+
             <FaProjectDiagram
               style={{
                 marginRight: "8px",
                 color: "#facc15",
               }}
             />
+
             Symbolic Reasoning
+
           </p>
+
 
           <p
             style={{
@@ -199,12 +283,14 @@ function ExplanationCard({
           >
             {symbolicExplanation}
           </p>
+
         </div>
       )}
 
-      {/* ======================================================
+
+      {/* =====================================================
           MODEL MESSAGE
-      ====================================================== */}
+      ===================================================== */}
 
       {message && (
         <div
@@ -216,20 +302,25 @@ function ExplanationCard({
             border: "1px solid #2c2c2c",
           }}
         >
+
           <p
             style={{
               margin: 0,
               fontWeight: "700",
             }}
           >
+
             <FaInfoCircle
               style={{
                 marginRight: "8px",
                 color: "#38bdf8",
               }}
             />
+
             Neuro-Symbolic Decision
+
           </p>
+
 
           <p
             style={{
@@ -242,10 +333,13 @@ function ExplanationCard({
           >
             {message}
           </p>
+
         </div>
       )}
+
     </div>
   );
 }
+
 
 export default ExplanationCard;
