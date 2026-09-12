@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from "react";
 
 import {
   FaShieldAlt,
-  FaNetworkWired,
   FaChartLine,
   FaBrain,
   FaProjectDiagram,
@@ -32,9 +31,7 @@ function App() {
   ========================================================= */
 
   const [data, setData] = useState(null);
-
   const [analysisHistory, setAnalysisHistory] = useState([]);
-
   const [currentTime, setCurrentTime] = useState(new Date());
 
 
@@ -61,12 +58,14 @@ function App() {
         "aegis_analysis_history"
       );
 
-      if (stored) {
-        const parsed = JSON.parse(stored);
+      if (!stored) {
+        return;
+      }
 
-        if (Array.isArray(parsed)) {
-          setAnalysisHistory(parsed);
-        }
+      const parsed = JSON.parse(stored);
+
+      if (Array.isArray(parsed)) {
+        setAnalysisHistory(parsed);
       }
     } catch (error) {
       console.error(
@@ -126,13 +125,23 @@ function App() {
     const filename =
       result.filename || "Uploaded CSV";
 
+    const threatLevel =
+      normalizedPrediction === "Normal"
+        ? "Low"
+        : confidence >= 80
+        ? "Critical"
+        : confidence >= 60
+        ? "High"
+        : confidence >= 30
+        ? "Medium"
+        : "Low";
+
     const historyItem = {
       id: `DET-${String(
         analysisHistory.length + 1
       ).padStart(3, "0")}`,
 
-      prediction:
-        normalizedPrediction,
+      prediction: normalizedPrediction,
 
       confidence,
 
@@ -140,16 +149,7 @@ function App() {
 
       timestamp,
 
-      threatLevel:
-        normalizedPrediction === "Normal"
-          ? "Low"
-          : confidence >= 80
-          ? "Critical"
-          : confidence >= 60
-          ? "High"
-          : confidence >= 30
-          ? "Medium"
-          : "Low",
+      threatLevel,
 
       status: "ANALYZED",
     };
@@ -196,11 +196,7 @@ function App() {
   ========================================================= */
 
   const threatLevel = useMemo(() => {
-    if (!data) {
-      return "Low";
-    }
-
-    if (isNormal) {
+    if (!data || isNormal) {
       return "Low";
     }
 
@@ -346,7 +342,7 @@ function App() {
       <main className="main-content">
 
         {/* ===================================================
-            COMPACT HERO / LANDING AREA
+            HERO
         =================================================== */}
 
         <section
@@ -369,19 +365,11 @@ function App() {
             <FaShieldAlt />
           </div>
 
-          <h1
-            style={{
-              margin: 0,
-            }}
-          >
+          <h1 style={{ margin: 0 }}>
             AEGIS-NSAI
           </h1>
 
-          <p
-            style={{
-              margin: "16px 0 0",
-            }}
-          >
+          <p style={{ margin: "16px 0 0" }}>
             Neuro-Symbolic Intrusion Detection System
           </p>
 
@@ -428,9 +416,7 @@ function App() {
                 CURRENT ANALYSIS
             =============================================== */}
 
-            <section
-              className="current-analysis-card"
-            >
+            <section className="current-analysis-card">
 
               <div className="section-title">
                 CURRENT ANALYSIS
@@ -455,20 +441,11 @@ function App() {
 
             <section className="summary-grid">
 
-              {/* ---------------------------------------------
-                  PREDICTION
-              --------------------------------------------- */}
-
               <div className="summary-card">
 
                 <div className="summary-card-header">
-
-                  <span>
-                    PREDICTION
-                  </span>
-
+                  <span>PREDICTION</span>
                   <FaShieldAlt />
-
                 </div>
 
                 <div
@@ -484,20 +461,11 @@ function App() {
               </div>
 
 
-              {/* ---------------------------------------------
-                  CONFIDENCE
-              --------------------------------------------- */}
-
               <div className="summary-card">
 
                 <div className="summary-card-header">
-
-                  <span>
-                    CONFIDENCE
-                  </span>
-
+                  <span>CONFIDENCE</span>
                   <FaChartLine />
-
                 </div>
 
                 <div className="summary-value">
@@ -507,47 +475,27 @@ function App() {
               </div>
 
 
-              {/* ---------------------------------------------
-                  AI ENGINE
-              --------------------------------------------- */}
-
               <div className="summary-card ai-card">
 
                 <div className="summary-card-header">
-
-                  <span>
-                    AI ENGINE
-                  </span>
-
+                  <span>AI ENGINE</span>
                   <FaBrain />
-
                 </div>
 
                 <div className="summary-value ai-value">
-
                   Neuro-
                   <br />
                   Symbolic
-
                 </div>
 
               </div>
 
 
-              {/* ---------------------------------------------
-                  RISK SCORE
-              --------------------------------------------- */}
-
               <div className="summary-card">
 
                 <div className="summary-card-header">
-
-                  <span>
-                    RISK SCORE
-                  </span>
-
+                  <span>RISK SCORE</span>
                   <FaProjectDiagram />
-
                 </div>
 
                 <div
@@ -563,45 +511,25 @@ function App() {
               </div>
 
 
-              {/* ---------------------------------------------
-                  DETECTION TIME
-              --------------------------------------------- */}
-
               <div className="summary-card">
 
                 <div className="summary-card-header">
-
-                  <span>
-                    DETECTION TIME
-                  </span>
-
+                  <span>DETECTION TIME</span>
                   <FaClock />
-
                 </div>
 
                 <div className="summary-value time-value">
-
                   {detectionTime}
-
                 </div>
 
               </div>
 
 
-              {/* ---------------------------------------------
-                  THREAT LEVEL
-              --------------------------------------------- */}
-
               <div className="summary-card">
 
                 <div className="summary-card-header">
-
-                  <span>
-                    THREAT LEVEL
-                  </span>
-
+                  <span>THREAT LEVEL</span>
                   <FaExclamationTriangle />
-
                 </div>
 
                 <div
@@ -652,9 +580,7 @@ function App() {
               <ExplanationCard
                 prediction={prediction}
                 confidence={confidence}
-                message={
-                  data.message || ""
-                }
+                message={data.message || ""}
                 symbolicConfidence={
                   symbolicConfidence
                 }
@@ -689,9 +615,7 @@ function App() {
                 ATTACK DESCRIPTION
             =============================================== */}
 
-            <section
-              className="dashboard-card attack-description"
-            >
+            <section className="dashboard-card attack-description">
 
               <h2>
                 ATTACK DESCRIPTION
@@ -764,7 +688,7 @@ function App() {
             <section className="dashboard-section">
 
               <AttackChart
-                data={
+                logs={
                   analysisHistory
                 }
               />
