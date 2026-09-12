@@ -6,13 +6,25 @@ import {
   FaFileCsv,
 } from "react-icons/fa";
 
-function RecentLogs({ logs = [] }) {
-  const safeLogs = Array.isArray(logs) ? logs : [];
 
-  const getSeverity = (prediction, confidence) => {
-    const normalizedPrediction = String(
-      prediction || ""
-    ).toLowerCase();
+function RecentLogs({ logs = [] }) {
+  const safeLogs = Array.isArray(logs)
+    ? logs
+    : [];
+
+
+  /* =========================================================
+     SEVERITY
+  ========================================================= */
+
+  const getSeverity = (
+    prediction,
+    confidence
+  ) => {
+    const normalizedPrediction =
+      String(prediction || "")
+        .trim()
+        .toLowerCase();
 
     if (
       normalizedPrediction === "normal" ||
@@ -60,8 +72,21 @@ function RecentLogs({ logs = [] }) {
     };
   };
 
+
+  /* =========================================================
+     DISPLAY NEWEST DETECTIONS FIRST
+  ========================================================= */
+
+  const displayedLogs = [...safeLogs].reverse();
+
+
+  /* =========================================================
+     RENDER
+  ========================================================= */
+
   return (
     <div className="info-card recent-logs">
+
       <div
         style={{
           display: "flex",
@@ -72,6 +97,7 @@ function RecentLogs({ logs = [] }) {
           flexWrap: "wrap",
         }}
       >
+
         <h3
           style={{
             margin: 0,
@@ -91,11 +117,16 @@ function RecentLogs({ logs = [] }) {
           }}
         >
           {safeLogs.length}{" "}
-          {safeLogs.length === 1 ? "Detection" : "Detections"}
+          {safeLogs.length === 1
+            ? "Detection"
+            : "Detections"}
         </span>
+
       </div>
 
+
       {safeLogs.length === 0 ? (
+
         <div
           style={{
             textAlign: "center",
@@ -103,6 +134,7 @@ function RecentLogs({ logs = [] }) {
             color: "#8f8f8f",
           }}
         >
+
           <FaShieldAlt
             size={45}
             style={{
@@ -111,150 +143,235 @@ function RecentLogs({ logs = [] }) {
             }}
           />
 
-          <h4>No detections yet</h4>
+          <h4>
+            No detections yet
+          </h4>
 
           <p>
-            Upload a CSV file to begin network analysis.
+            Upload a CSV file to begin
+            network analysis.
           </p>
+
         </div>
+
       ) : (
+
         <div className="logs">
-          {safeLogs.map((log, index) => {
-            const confidence = Number(log?.confidence);
 
-            const safeConfidence = Number.isFinite(confidence)
-              ? confidence
-              : 0;
+          {displayedLogs.map(
+            (log, index) => {
 
-            const prediction = log?.prediction || "Unknown";
+              const confidence =
+                Number(log?.confidence);
 
-            const severity = getSeverity(
-              prediction,
-              safeConfidence
-            );
+              const safeConfidence =
+                Number.isFinite(confidence)
+                  ? confidence
+                  : 0;
 
-            const detectionId =
-              log?.id ||
-              `DET-${String(index + 1).padStart(3, "0")}`;
+              const prediction =
+                log?.prediction ||
+                "Unknown";
 
-            const filename =
-              log?.filename || "Uploaded network dataset";
+              const severity =
+                getSeverity(
+                  prediction,
+                  safeConfidence
+                );
 
-            return (
-              <div
-                key={`${detectionId}-${index}`}
-                className={`log-row ${
-                  index === 0 ? "latest-row" : ""
-                }`}
-                style={{
-                  display: "grid",
-                  gap: "10px",
-                }}
-              >
+              const detectionId =
+                log?.id ||
+                `DET-${String(
+                  safeLogs.length - index
+                ).padStart(3, "0")}`;
+
+              const filename =
+                log?.filename ||
+                "Uploaded network dataset";
+
+              /*
+               * App.jsx stores the timestamp
+               * under `timestamp`.
+               *
+               * `time` is retained as a fallback
+               * for older saved history entries.
+               */
+              const timestamp =
+                log?.timestamp ||
+                log?.time ||
+                "Unknown time";
+
+
+              return (
+
                 <div
+                  key={`${detectionId}-${index}`}
+                  className={`log-row ${
+                    index === 0
+                      ? "latest-row"
+                      : ""
+                  }`}
                   style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    fontWeight: "600",
+                    display: "grid",
+                    gap: "10px",
                   }}
                 >
-                  <FaFingerprint />
 
-                  <span>{detectionId}</span>
+                  {/* ---------------------------------------
+                      DETECTION ID
+                  --------------------------------------- */}
 
-                  {index === 0 && (
-                    <span className="latest-badge">
-                      ● ANALYZED
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      fontWeight: "600",
+                    }}
+                  >
+
+                    <FaFingerprint />
+
+                    <span>
+                      {detectionId}
                     </span>
-                  )}
-                </div>
 
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                  }}
-                  title="Analyzed dataset"
-                >
-                  <FaFileCsv />
+                    {index === 0 && (
+                      <span className="latest-badge">
+                        ● ANALYZED
+                      </span>
+                    )}
+
+                  </div>
+
+
+                  {/* ---------------------------------------
+                      FILE
+                  --------------------------------------- */}
+
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                    title="Analyzed dataset"
+                  >
+
+                    <FaFileCsv />
+
+                    <span
+                      style={{
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                      title={filename}
+                    >
+                      {filename}
+                    </span>
+
+                  </div>
+
+
+                  {/* ---------------------------------------
+                      TIMESTAMP
+                  --------------------------------------- */}
+
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                    title="Detection timestamp"
+                  >
+
+                    <FaClock />
+
+                    <span>
+                      {timestamp}
+                    </span>
+
+                  </div>
+
+
+                  {/* ---------------------------------------
+                      PREDICTION
+                  --------------------------------------- */}
+
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      fontWeight: "600",
+                    }}
+                  >
+
+                    <FaShieldAlt />
+
+                    <span>
+                      {prediction}
+                    </span>
+
+                  </div>
+
+
+                  {/* ---------------------------------------
+                      CONFIDENCE
+                  --------------------------------------- */}
+
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+
+                    <FaBullseye />
+
+                    <span>
+                      {safeConfidence.toFixed(2)}%
+                    </span>
+
+                  </div>
+
+
+                  {/* ---------------------------------------
+                      SEVERITY
+                  --------------------------------------- */}
 
                   <span
                     style={{
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
+                      background:
+                        severity.color,
+                      color: "#000",
+                      padding: "6px 12px",
+                      borderRadius: "20px",
+                      fontWeight: "700",
+                      fontSize: "12px",
                       whiteSpace: "nowrap",
+                      width: "fit-content",
                     }}
-                    title={filename}
                   >
-                    {filename}
+                    {severity.label}
                   </span>
+
                 </div>
 
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                  }}
-                  title="Detection timestamp"
-                >
-                  <FaClock />
+              );
+            }
+          )}
 
-                  <span>
-                    {log?.time || "Unknown time"}
-                  </span>
-                </div>
-
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    fontWeight: "600",
-                  }}
-                >
-                  <FaShieldAlt />
-
-                  <span>{prediction}</span>
-                </div>
-
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                  }}
-                >
-                  <FaBullseye />
-
-                  <span>
-                    {safeConfidence.toFixed(2)}%
-                  </span>
-                </div>
-
-                <span
-                  style={{
-                    background: severity.color,
-                    color: "#000",
-                    padding: "6px 12px",
-                    borderRadius: "20px",
-                    fontWeight: "700",
-                    fontSize: "12px",
-                    whiteSpace: "nowrap",
-                    width: "fit-content",
-                  }}
-                >
-                  {severity.label}
-                </span>
-              </div>
-            );
-          })}
         </div>
+
       )}
+
     </div>
   );
 }
+
 
 export default RecentLogs;
