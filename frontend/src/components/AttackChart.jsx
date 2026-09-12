@@ -13,12 +13,23 @@ ChartJS.register(
   Legend
 );
 
-function AttackChart({ logs }) {
+function AttackChart({ logs = [] }) {
+  // Always work with an array.
+  // This prevents the dashboard from crashing when logs
+  // has not been initialized yet.
+  const safeLogs = Array.isArray(logs) ? logs : [];
+
   const attackCounts = {};
 
-  logs.forEach((log) => {
-    attackCounts[log.prediction] =
-      (attackCounts[log.prediction] || 0) + 1;
+  safeLogs.forEach((log) => {
+    if (!log) return;
+
+    const prediction = String(
+      log.prediction || log.attack || "Unknown"
+    ).trim();
+
+    attackCounts[prediction] =
+      (attackCounts[prediction] || 0) + 1;
   });
 
   const data = {
@@ -66,7 +77,7 @@ function AttackChart({ logs }) {
     >
       <h3>Attack Distribution</h3>
 
-      {logs.length === 0 ? (
+      {safeLogs.length === 0 ? (
         <p>No attack data available.</p>
       ) : (
         <div
