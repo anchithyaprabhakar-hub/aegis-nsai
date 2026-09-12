@@ -602,8 +602,7 @@ function App() {
             <section className="dashboard-section">
 
               <KnowledgeGraph
-                prediction={prediction}
-                knowledgeGraph={
+                graph={
                   knowledgeGraph
                 }
               />
