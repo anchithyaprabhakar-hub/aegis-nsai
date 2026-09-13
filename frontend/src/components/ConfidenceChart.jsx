@@ -31,20 +31,11 @@ function ConfidenceChart({
   history,
   detections,
 }) {
-  /*
-   * AEGIS-NSAI Confidence History
-   *
-   * The component accepts the existing data props used by
-   * different parts of the dashboard and normalizes them
-   * into a single chart data structure.
-   */
-
-
   /* =========================================================
      FIND SOURCE DATA
   ========================================================= */
 
-  let source =
+  const source =
     result ??
     data ??
     history ??
@@ -59,18 +50,24 @@ function ConfidenceChart({
 
   if (Array.isArray(source)) {
     historyData = source;
-  } else if (source && typeof source === "object") {
+  } else if (
+    source &&
+    typeof source === "object"
+  ) {
     historyData = [source];
   }
 
 
   /* =========================================================
-     FALLBACK FOR DIRECT CONFIDENCE/PREDICTION PROPS
+     FALLBACK
   ========================================================= */
 
   if (
     historyData.length === 0 &&
-    (confidence !== undefined || prediction !== undefined)
+    (
+      confidence !== undefined ||
+      prediction !== undefined
+    )
   ) {
     historyData = [
       {
@@ -112,7 +109,10 @@ function ConfidenceChart({
         Number.isFinite(numericConfidence)
           ? Math.max(
               0,
-              Math.min(100, numericConfidence)
+              Math.min(
+                100,
+                numericConfidence
+              )
             )
           : 0;
 
@@ -128,11 +128,14 @@ function ConfidenceChart({
         confidence: safeConfidence,
       };
     })
-    .filter((item) => item.prediction !== "Unknown");
+    .filter(
+      (item) =>
+        item.prediction !== "Unknown"
+    );
 
 
   /* =========================================================
-     LIMIT DISPLAYED HISTORY
+     LAST 10 DETECTIONS
   ========================================================= */
 
   const displayedItems =
@@ -149,20 +152,29 @@ function ConfidenceChart({
         className="info-card"
         style={{
           width: "100%",
+          padding: "20px 22px",
         }}
       >
-        <h3>
+        <h3
+          style={{
+            margin: 0,
+            fontSize: "22px",
+            fontWeight: "700",
+            textAlign: "center",
+          }}
+        >
           Confidence History
         </h3>
 
         <div
           style={{
-            height: "300px",
+            height: "120px",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             color: "#8f8f8f",
             textAlign: "center",
+            fontSize: "14px",
           }}
         >
           No confidence data available yet.
@@ -173,12 +185,12 @@ function ConfidenceChart({
 
 
   /* =========================================================
-     CHART LABELS
+     LABELS
   ========================================================= */
 
   const labels =
     displayedItems.map(
-      (item, index) =>
+      (_, index) =>
         `Detection ${index + 1}`
     );
 
@@ -201,7 +213,7 @@ function ConfidenceChart({
         borderColor: "#38bdf8",
 
         backgroundColor:
-          "rgba(56, 189, 248, 0.15)",
+          "rgba(56, 189, 248, 0.10)",
 
         pointBackgroundColor:
           "#38bdf8",
@@ -209,11 +221,11 @@ function ConfidenceChart({
         pointBorderColor:
           "#38bdf8",
 
-        pointRadius: 5,
+        pointRadius: 3.5,
 
-        pointHoverRadius: 7,
+        pointHoverRadius: 5,
 
-        borderWidth: 3,
+        borderWidth: 2,
 
         tension: 0.3,
 
@@ -233,20 +245,12 @@ function ConfidenceChart({
     maintainAspectRatio: false,
 
     animation: {
-      duration: 600,
+      duration: 400,
     },
 
     plugins: {
       legend: {
-        display: true,
-
-        labels: {
-          color: "#d1d5db",
-
-          font: {
-            size: 14,
-          },
-        },
+        display: false,
       },
 
       tooltip: {
@@ -283,16 +287,26 @@ function ConfidenceChart({
     scales: {
       x: {
         ticks: {
-          color: "#9ca3af",
+          color: "#8f8f8f",
 
           font: {
-            size: 12,
+            size: 10,
           },
+
+          maxRotation: 0,
+
+          autoSkip: true,
+
+          maxTicksLimit: 10,
         },
 
         grid: {
           color:
-            "rgba(255,255,255,0.05)",
+            "rgba(255,255,255,0.04)",
+        },
+
+        border: {
+          display: false,
         },
       },
 
@@ -302,27 +316,34 @@ function ConfidenceChart({
         max: 100,
 
         ticks: {
-          stepSize: 10,
+          stepSize: 20,
 
-          color: "#9ca3af",
+          color: "#8f8f8f",
+
+          font: {
+            size: 10,
+          },
 
           callback: function (value) {
-            const numericValue =
-              Number(value);
-
-            return Number.isFinite(
-              numericValue
-            )
-              ? `${numericValue}%`
-              : "0%";
+            return `${value}%`;
           },
         },
 
         grid: {
           color:
-            "rgba(255,255,255,0.05)",
+            "rgba(255,255,255,0.04)",
+        },
+
+        border: {
+          display: false,
         },
       },
+    },
+
+    interaction: {
+      intersect: false,
+
+      mode: "index",
     },
   };
 
@@ -336,18 +357,47 @@ function ConfidenceChart({
       className="info-card"
       style={{
         width: "100%",
+        padding: "20px 22px",
       }}
     >
-      <h3>
-        Confidence History
-      </h3>
+
+      {/* HEADER */}
+
+      <div
+        style={{
+          textAlign: "center",
+          marginBottom: "10px",
+        }}
+      >
+        <h3
+          style={{
+            margin: 0,
+            fontSize: "22px",
+            fontWeight: "700",
+          }}
+        >
+          Confidence History
+        </h3>
+
+        <p
+          style={{
+            margin: "5px 0 0",
+            color: "#8f8f8f",
+            fontSize: "13px",
+          }}
+        >
+          Confidence across recent detections
+        </p>
+      </div>
+
+
+      {/* CHART */}
 
       <div
         style={{
           width: "100%",
-          height: "300px",
+          height: "220px",
           position: "relative",
-          marginTop: "20px",
         }}
       >
         <Line
@@ -355,6 +405,7 @@ function ConfidenceChart({
           options={chartOptions}
         />
       </div>
+
     </div>
   );
 }
