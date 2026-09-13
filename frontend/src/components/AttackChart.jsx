@@ -1,4 +1,4 @@
-import { Pie } from "react-chartjs-2";
+import { Doughnut } from "react-chartjs-2";
 
 import {
   Chart as ChartJS,
@@ -45,9 +45,7 @@ function AttackChart({ logs = [] }) {
 
 
   /* =========================================================
-     ORDER DATA
-     
-     Keep Normal first, followed by attack categories.
+     SORT DETECTIONS
   ========================================================= */
 
   const sortedEntries = Object.entries(
@@ -81,7 +79,7 @@ function AttackChart({ logs = [] }) {
      CHART DATA
   ========================================================= */
 
-  const data = {
+  const chartData = {
     labels,
 
     datasets: [
@@ -103,7 +101,7 @@ function AttackChart({ logs = [] }) {
 
         borderWidth: 2,
 
-        hoverOffset: 5,
+        hoverOffset: 4,
       },
     ],
   };
@@ -113,13 +111,15 @@ function AttackChart({ logs = [] }) {
      CHART OPTIONS
   ========================================================= */
 
-  const options = {
+  const chartOptions = {
     responsive: true,
 
     maintainAspectRatio: false,
 
+    cutout: "58%",
+
     animation: {
-      duration: 500,
+      duration: 350,
     },
 
     plugins: {
@@ -129,14 +129,14 @@ function AttackChart({ logs = [] }) {
         labels: {
           color: "#d4d4d8",
 
-          padding: 12,
+          padding: 8,
 
-          boxWidth: 12,
+          boxWidth: 10,
 
-          boxHeight: 12,
+          boxHeight: 10,
 
           font: {
-            size: 12,
+            size: 11,
           },
         },
       },
@@ -148,7 +148,7 @@ function AttackChart({ logs = [] }) {
               context.label || "";
 
             const value =
-              context.raw || 0;
+              Number(context.raw) || 0;
 
             const total =
               values.reduce(
@@ -174,6 +174,46 @@ function AttackChart({ logs = [] }) {
 
 
   /* =========================================================
+     EMPTY STATE
+  ========================================================= */
+
+  if (safeLogs.length === 0) {
+    return (
+      <div
+        className="info-card"
+        style={{
+          width: "100%",
+          padding: "18px 22px",
+        }}
+      >
+        <h3
+          style={{
+            margin: 0,
+            textAlign: "center",
+            fontSize: "21px",
+          }}
+        >
+          Attack Distribution
+        </h3>
+
+        <div
+          style={{
+            height: "100px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "#8f8f8f",
+            fontSize: "13px",
+          }}
+        >
+          No attack data available.
+        </div>
+      </div>
+    );
+  }
+
+
+  /* =========================================================
      RENDER
   ========================================================= */
 
@@ -182,7 +222,7 @@ function AttackChart({ logs = [] }) {
       className="info-card"
       style={{
         gridColumn: "1 / span 2",
-        padding: "20px 22px",
+        padding: "18px 22px",
       }}
     >
 
@@ -190,75 +230,51 @@ function AttackChart({ logs = [] }) {
 
       <div
         style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          marginBottom: "12px",
+          textAlign: "center",
+          marginBottom: "6px",
         }}
       >
-
         <h3
           style={{
             margin: 0,
-            fontSize: "22px",
+            fontSize: "21px",
             fontWeight: "700",
           }}
         >
           Attack Distribution
         </h3>
 
+        <p
+          style={{
+            margin: "4px 0 0",
+            color: "#8f8f8f",
+            fontSize: "12px",
+          }}
+        >
+          Distribution of detections recorded during
+          this analysis session.
+        </p>
       </div>
 
 
-      {/* DESCRIPTION */}
+      {/* COMPACT CHART */}
 
-      <p
+      <div
         style={{
-          margin: "0 0 12px",
-          textAlign: "center",
-          color: "#8f8f8f",
-          fontSize: "13px",
+          width: "100%",
+          height: "185px",
+          position: "relative",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          overflow: "hidden",
         }}
       >
-        Distribution of detections recorded during this
-        analysis session.
-      </p>
-
-
-      {/* CHART */}
-
-      {safeLogs.length === 0 ? (
-
-        <div
-          style={{
-            minHeight: "120px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "#8f8f8f",
-            fontSize: "14px",
-          }}
-        >
-          No attack data available.
-        </div>
-
-      ) : (
-
-        <div
-          style={{
-            height: "245px",
-            maxWidth: "650px",
-            margin: "0 auto",
-            position: "relative",
-          }}
-        >
-          <Pie
-            data={data}
-            options={options}
-          />
-        </div>
-
-      )}
+        <Doughnut
+          data={chartData}
+          options={chartOptions}
+        />
+      </div>
 
     </div>
   );
