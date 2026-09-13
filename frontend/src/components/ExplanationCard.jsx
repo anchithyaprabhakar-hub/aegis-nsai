@@ -13,32 +13,29 @@ function ExplanationCard({
   symbolicSupport,
   symbolicExplanation,
 }) {
-  const mlConfidence =
-    Number(confidence) || 0;
+  const mlConfidence = Number(confidence) || 0;
 
   /*
-   * Symbolic support is behavioural/rule evidence.
+   * Symbolic support represents behavioural/rule evidence.
    * It is not a statistical probability.
-   *
-   * Keep support as the primary value because the backend
-   * exposes symbolic_support for this purpose.
    */
   const symbolicEvidence =
-    Number(
-      symbolicSupport ??
-      symbolicConfidence
-    ) || 0;
+    Number(symbolicSupport ?? symbolicConfidence) || 0;
 
 
   /* =========================================================
-     DECISION SUMMARY
+     HELPERS
   ========================================================= */
+
+  const isNormal =
+    prediction === "Normal" ||
+    prediction === "Benign";
+
 
   const getDecisionSummary = () => {
     if (
       symbolicEvidence > 0 &&
-      prediction !== "Normal" &&
-      prediction !== "Benign"
+      !isNormal
     ) {
       return (
         "The neural network identified the dominant attack pattern, "
@@ -46,10 +43,7 @@ function ExplanationCard({
       );
     }
 
-    if (
-      prediction === "Normal" ||
-      prediction === "Benign"
-    ) {
+    if (isNormal) {
       return (
         "The uploaded traffic was classified as normal network behaviour. "
         + "Symbolic rules did not provide sufficient attack support to "
@@ -73,6 +67,7 @@ function ExplanationCard({
       className="info-card"
       style={{
         gridColumn: "1 / span 2",
+        padding: "22px 24px",
       }}
     >
 
@@ -80,55 +75,76 @@ function ExplanationCard({
           HEADER
       ===================================================== */}
 
-      <h3>
-        <FaBrain /> AI Explanation
-      </h3>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "10px",
+          marginBottom: "16px",
+        }}
+      >
+
+        <FaBrain
+          style={{
+            color: "#f5f5f5",
+            fontSize: "21px",
+          }}
+        />
+
+        <h3
+          style={{
+            margin: 0,
+            fontSize: "22px",
+            fontWeight: "700",
+          }}
+        >
+          AI Explanation
+        </h3>
+
+      </div>
 
 
       {/* =====================================================
-          DETECTION SUMMARY
+          FINAL DETECTION
       ===================================================== */}
 
       <div
         style={{
-          marginTop: "22px",
-          padding: "16px",
-          borderRadius: "12px",
+          padding: "14px 18px",
+          borderRadius: "11px",
           background: "#111111",
           border: "1px solid #2c2c2c",
+          textAlign: "center",
         }}
       >
 
-        <p
+        <div
           style={{
-            margin: 0,
             fontSize: "16px",
-            lineHeight: "1.7",
+            fontWeight: "700",
           }}
         >
 
-          <strong>
-            Final Detection:
-          </strong>{" "}
+          Final Detection:{" "}
 
           <span
             style={{
               color: "#38bdf8",
-              fontWeight: "700",
             }}
           >
             {prediction || "Unknown"}
           </span>
 
-        </p>
+        </div>
 
 
         <p
           style={{
-            marginTop: "10px",
-            marginBottom: 0,
+            margin: "9px 0 0",
             color: "#d1d5db",
-            lineHeight: "1.7",
+            fontSize: "15px",
+            lineHeight: "1.55",
           }}
         >
           {getDecisionSummary()}
@@ -144,10 +160,9 @@ function ExplanationCard({
       <div
         style={{
           display: "grid",
-          gridTemplateColumns:
-            "repeat(auto-fit, minmax(190px, 1fr))",
+          gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
           gap: "12px",
-          marginTop: "16px",
+          marginTop: "12px",
         }}
       >
 
@@ -157,28 +172,44 @@ function ExplanationCard({
 
         <div
           style={{
-            padding: "14px",
-            borderRadius: "10px",
+            minHeight: "105px",
+            padding: "14px 16px",
+            borderRadius: "11px",
             background: "#151515",
             border: "1px solid #2c2c2c",
+            textAlign: "center",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
           }}
         >
 
-          <FaBrain
+          <div
             style={{
-              marginRight: "8px",
-              color: "#38bdf8",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "8px",
+              fontSize: "16px",
+              fontWeight: "700",
             }}
-          />
+          >
 
-          <strong>
+            <FaBrain
+              style={{
+                color: "#38bdf8",
+              }}
+            />
+
             Neural Confidence
-          </strong>
+
+          </div>
+
 
           <div
             style={{
-              marginTop: "8px",
-              fontSize: "20px",
+              marginTop: "7px",
+              fontSize: "22px",
               fontWeight: "700",
             }}
           >
@@ -194,40 +225,56 @@ function ExplanationCard({
 
         <div
           style={{
-            padding: "14px",
-            borderRadius: "10px",
+            minHeight: "105px",
+            padding: "14px 16px",
+            borderRadius: "11px",
             background: "#151515",
             border: "1px solid #2c2c2c",
+            textAlign: "center",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
           }}
         >
 
-          <FaProjectDiagram
+          <div
             style={{
-              marginRight: "8px",
-              color: "#facc15",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "8px",
+              fontSize: "16px",
+              fontWeight: "700",
             }}
-          />
+          >
 
-          <strong>
+            <FaProjectDiagram
+              style={{
+                color: "#facc15",
+              }}
+            />
+
             Symbolic Rule Support
-          </strong>
+
+          </div>
+
 
           <div
             style={{
-              marginTop: "8px",
-              fontSize: "20px",
+              marginTop: "7px",
+              fontSize: "22px",
               fontWeight: "700",
             }}
           >
             {symbolicEvidence.toFixed(2)}%
           </div>
 
+
           <div
             style={{
-              marginTop: "5px",
+              marginTop: "3px",
               color: "#8f8f8f",
-              fontSize: "12px",
-              lineHeight: "1.5",
+              fontSize: "11px",
             }}
           >
             Behavioural rule evidence
@@ -239,100 +286,126 @@ function ExplanationCard({
 
 
       {/* =====================================================
-          SYMBOLIC EXPLANATION
+          REASONING + DECISION
       ===================================================== */}
 
-      {symbolicExplanation && (
+      {(symbolicExplanation || message) && (
         <div
           style={{
-            marginTop: "18px",
-            padding: "16px",
-            borderRadius: "12px",
-            background: "#111111",
-            border: "1px solid #2c2c2c",
+            display: "grid",
+            gridTemplateColumns:
+              symbolicExplanation && message
+                ? "repeat(2, minmax(0, 1fr))"
+                : "1fr",
+            gap: "12px",
+            marginTop: "12px",
           }}
         >
 
-          <p
-            style={{
-              margin: 0,
-              fontWeight: "700",
-            }}
-          >
+          {/* -------------------------------------------------
+              SYMBOLIC REASONING
+          ------------------------------------------------- */}
 
-            <FaProjectDiagram
+          {symbolicExplanation && (
+            <div
               style={{
-                marginRight: "8px",
-                color: "#facc15",
+                minHeight: "120px",
+                padding: "15px 17px",
+                borderRadius: "11px",
+                background: "#111111",
+                border: "1px solid #2c2c2c",
               }}
-            />
+            >
 
-            Symbolic Reasoning
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "8px",
+                  fontSize: "16px",
+                  fontWeight: "700",
+                }}
+              >
 
-          </p>
+                <FaProjectDiagram
+                  style={{
+                    color: "#facc15",
+                  }}
+                />
+
+                Symbolic Reasoning
+
+              </div>
 
 
-          <p
-            style={{
-              marginTop: "10px",
-              marginBottom: 0,
-              lineHeight: "1.8",
-              color: "#d1d5db",
-              fontSize: "16px",
-            }}
-          >
-            {symbolicExplanation}
-          </p>
+              <p
+                style={{
+                  margin: "10px 0 0",
+                  color: "#d1d5db",
+                  fontSize: "14px",
+                  lineHeight: "1.55",
+                  textAlign: "center",
+                }}
+              >
+                {symbolicExplanation}
+              </p>
 
-        </div>
-      )}
+            </div>
+          )}
 
 
-      {/* =====================================================
-          MODEL MESSAGE
-      ===================================================== */}
+          {/* -------------------------------------------------
+              NEURO-SYMBOLIC DECISION
+          ------------------------------------------------- */}
 
-      {message && (
-        <div
-          style={{
-            marginTop: "18px",
-            padding: "16px",
-            borderRadius: "12px",
-            background: "#111111",
-            border: "1px solid #2c2c2c",
-          }}
-        >
-
-          <p
-            style={{
-              margin: 0,
-              fontWeight: "700",
-            }}
-          >
-
-            <FaInfoCircle
+          {message && (
+            <div
               style={{
-                marginRight: "8px",
-                color: "#38bdf8",
+                minHeight: "120px",
+                padding: "15px 17px",
+                borderRadius: "11px",
+                background: "#111111",
+                border: "1px solid #2c2c2c",
               }}
-            />
+            >
 
-            Neuro-Symbolic Decision
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "8px",
+                  fontSize: "16px",
+                  fontWeight: "700",
+                }}
+              >
 
-          </p>
+                <FaInfoCircle
+                  style={{
+                    color: "#38bdf8",
+                  }}
+                />
+
+                Neuro-Symbolic Decision
+
+              </div>
 
 
-          <p
-            style={{
-              marginTop: "10px",
-              marginBottom: 0,
-              lineHeight: "1.8",
-              color: "#d1d5db",
-              fontSize: "16px",
-            }}
-          >
-            {message}
-          </p>
+              <p
+                style={{
+                  margin: "10px 0 0",
+                  color: "#d1d5db",
+                  fontSize: "14px",
+                  lineHeight: "1.55",
+                  textAlign: "center",
+                }}
+              >
+                {message}
+              </p>
+
+            </div>
+          )}
 
         </div>
       )}

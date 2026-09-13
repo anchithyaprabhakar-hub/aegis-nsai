@@ -1,30 +1,50 @@
-function ConfidenceBar({ confidence }) {
+function ConfidenceBar({ confidence, prediction }) {
+  const normalizedPrediction = String(prediction || "").trim();
+  const isNormal = normalizedPrediction === "Normal";
 
   let color = "#22c55e";
   let level = "Low";
   let description =
     "The prediction confidence is low. Additional monitoring is recommended.";
 
-  if (confidence >= 80) {
-    color = "#ef4444";
-    level = "Critical";
-    description =
-      "The AI model is highly confident that this traffic represents malicious activity.";
-  } else if (confidence >= 60) {
-    color = "#f97316";
-    level = "High";
-    description =
-      "The prediction indicates strong evidence of suspicious network behaviour.";
-  } else if (confidence >= 30) {
-    color = "#facc15";
-    level = "Medium";
-    description =
-      "The prediction shows moderate confidence. Further investigation is recommended.";
+  if (isNormal) {
+    if (confidence >= 80) {
+      color = "#22c55e";
+      level = "High";
+      description =
+        "The AI model is highly confident that this traffic represents normal network behaviour.";
+    } else if (confidence >= 60) {
+      color = "#22c55e";
+      level = "Moderate";
+      description =
+        "The model indicates that the traffic is likely normal, with moderate confidence.";
+    } else if (confidence >= 30) {
+      color = "#facc15";
+      level = "Low";
+      description =
+        "The traffic is classified as normal, but the confidence is relatively low.";
+    }
+  } else {
+    if (confidence >= 80) {
+      color = "#ef4444";
+      level = "Critical";
+      description =
+        "The AI model is highly confident that this traffic represents malicious activity.";
+    } else if (confidence >= 60) {
+      color = "#f97316";
+      level = "High";
+      description =
+        "The prediction indicates strong evidence of suspicious network behaviour.";
+    } else if (confidence >= 30) {
+      color = "#facc15";
+      level = "Medium";
+      description =
+        "The prediction shows moderate confidence. Further investigation is recommended.";
+    }
   }
 
   return (
     <div className="info-card">
-
       <h3>Confidence Score</h3>
 
       <div
@@ -82,7 +102,6 @@ function ConfidenceBar({ confidence }) {
       >
         {description}
       </p>
-
     </div>
   );
 }
