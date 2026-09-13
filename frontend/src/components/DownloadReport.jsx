@@ -32,9 +32,7 @@ function DownloadReport({ data }) {
     const toNumber = (value, fallback = 0) => {
       const number = Number(value);
 
-      return Number.isFinite(number)
-        ? number
-        : fallback;
+      return Number.isFinite(number) ? number : fallback;
     };
 
     const formatNumber = (value) => {
@@ -92,7 +90,6 @@ function DownloadReport({ data }) {
       )
     );
 
-    // Extract symbolic evidence from backend message if needed.
     if (!symbolicEvidence && data.message) {
       const match = String(data.message).match(
         /symbolic\s+(?:evidence|support).*?(\d+(?:\.\d+)?)%/i
@@ -143,6 +140,8 @@ function DownloadReport({ data }) {
 
     const recordCountValue =
       getFirstValue(
+        data.rows_processed,
+        data.rowsProcessed,
         data.rows_analyzed,
         data.rowsAnalyzed,
         data.total_rows,
@@ -158,12 +157,16 @@ function DownloadReport({ data }) {
         data.totalRecords,
         data.analyzed_rows,
         data.analyzedRows,
+        data.analysis?.rows_processed,
+        data.analysis?.rowsProcessed,
         data.analysis?.rows_analyzed,
         data.analysis?.rowsAnalyzed,
         data.analysis?.total_rows,
         data.analysis?.totalRows,
         data.analysis?.records_analyzed,
         data.analysis?.recordsAnalyzed,
+        data.metadata?.rows_processed,
+        data.metadata?.rowsProcessed,
         data.metadata?.rows_analyzed,
         data.metadata?.rowsAnalyzed
       );
@@ -206,9 +209,15 @@ function DownloadReport({ data }) {
     // THREAT ASSESSMENT
     // =========================================================
 
+    const normalizedPrediction = String(
+      prediction
+    )
+      .trim()
+      .toLowerCase();
+
     const isNormal =
-      String(prediction).toLowerCase() === "normal" ||
-      String(prediction).toLowerCase() === "benign";
+      normalizedPrediction === "normal" ||
+      normalizedPrediction === "benign";
 
     let threat = "LOW";
 
@@ -220,21 +229,19 @@ function DownloadReport({ data }) {
       threat = "MEDIUM";
     }
 
+    // Keep PDF risk-score semantics consistent with dashboard:
+    // Normal traffic = 0 risk.
+    // Malicious traffic = confidence-based risk.
     const riskScore = isNormal
-      ? Math.max(
-          0,
-          Math.round(100 - confidence)
-        )
-      : Math.round(confidence);
+      ? 0
+      : Math.min(100, Math.max(0, Math.round(confidence)));
 
     // =========================================================
     // REPORT METADATA
     // =========================================================
 
     const reportId = `AEG-${Date.now()}`;
-
-    const generatedAt =
-      new Date().toLocaleString();
+    const generatedAt = new Date().toLocaleString();
 
     // =========================================================
     // INDEPENDENT MODEL VALIDATION
@@ -290,16 +297,9 @@ function DownloadReport({ data }) {
       style = "normal",
       color = COLORS.dark
     ) => {
-      doc.setFont(
-        "helvetica",
-        style
-      );
-
+      doc.setFont("helvetica", style);
       doc.setFontSize(size);
-
-      doc.setTextColor(
-        ...color
-      );
+      doc.setTextColor(...color);
     };
 
     const roundedBox = (
@@ -310,9 +310,7 @@ function DownloadReport({ data }) {
       fill,
       radius = 4
     ) => {
-      doc.setFillColor(
-        ...fill
-      );
+      doc.setFillColor(...fill);
 
       doc.roundedRect(
         x,
@@ -331,13 +329,8 @@ function DownloadReport({ data }) {
       width,
       height
     ) => {
-      doc.setDrawColor(
-        ...COLORS.border
-      );
-
-      doc.setLineWidth(
-        0.4
-      );
+      doc.setDrawColor(...COLORS.border);
+      doc.setLineWidth(0.4);
 
       doc.roundedRect(
         x,
@@ -357,32 +350,21 @@ function DownloadReport({ data }) {
       width,
       lineHeight = 4
     ) => {
-      const lines =
-        doc.splitTextToSize(
-          String(text),
-          width
-        );
-
-      doc.text(
-        lines,
-        x,
-        y
+      const lines = doc.splitTextToSize(
+        String(text),
+        width
       );
 
-      return (
-        y +
-        lines.length *
-          lineHeight
-      );
+      doc.text(lines, x, y);
+
+      return y + lines.length * lineHeight;
     };
 
     const drawHeader = (
       title,
       subtitle = ""
     ) => {
-      doc.setFillColor(
-        ...COLORS.dark
-      );
+      doc.setFillColor(...COLORS.dark);
 
       doc.rect(
         0,
@@ -414,9 +396,7 @@ function DownloadReport({ data }) {
         "Neuro-Symbolic Intrusion Detection System",
         196,
         11,
-        {
-          align: "right",
-        }
+        { align: "right" }
       );
 
       setText(
@@ -449,13 +429,8 @@ function DownloadReport({ data }) {
     const drawFooter = (
       pageNumber
     ) => {
-      doc.setDrawColor(
-        ...COLORS.border
-      );
-
-      doc.setLineWidth(
-        0.4
-      );
+      doc.setDrawColor(...COLORS.border);
+      doc.setLineWidth(0.4);
 
       doc.line(
         14,
@@ -480,18 +455,14 @@ function DownloadReport({ data }) {
         `Report ${reportId}`,
         105,
         286,
-        {
-          align: "center",
-        }
+        { align: "center" }
       );
 
       doc.text(
         `Page ${pageNumber} of 4`,
         196,
         286,
-        {
-          align: "right",
-        }
+        { align: "right" }
       );
     };
 
@@ -502,16 +473,13 @@ function DownloadReport({ data }) {
       percentage,
       color
     ) => {
-      const value =
-        Math.max(
-          0,
-          Math.min(
-            100,
-            Number(
-              percentage
-            ) || 0
-          )
-        );
+      const value = Math.max(
+        0,
+        Math.min(
+          100,
+          Number(percentage) || 0
+        )
+      );
 
       doc.setFillColor(
         ...COLORS.lightGray
@@ -528,16 +496,12 @@ function DownloadReport({ data }) {
       );
 
       if (value > 0) {
-        doc.setFillColor(
-          ...color
-        );
+        doc.setFillColor(...color);
 
         doc.roundedRect(
           x,
           y,
-          (width *
-            value) /
-            100,
+          (width * value) / 100,
           5,
           2,
           2,
@@ -550,105 +514,82 @@ function DownloadReport({ data }) {
     // RECOMMENDATIONS
     // =========================================================
 
-    const getRecommendations =
-      () => {
-        const attack =
-          String(
-            prediction
-          ).toLowerCase();
+    const getRecommendations = () => {
+      const attack =
+        String(prediction).toLowerCase();
 
-        if (isNormal) {
-          return [
-            "Continue monitoring the traffic source and maintain normal network logging.",
-            "Correlate future anomalies with firewall, endpoint and authentication logs.",
-            "Re-analyse new traffic captures if abnormal behaviour is observed.",
-          ];
-        }
-
-        if (
-          attack.includes(
-            "portscan"
-          ) ||
-          attack.includes(
-            "port scan"
-          )
-        ) {
-          return [
-            "Investigate originating source addresses associated with the scanning activity.",
-            "Review repeated connection attempts across destination ports.",
-            "Check whether reconnaissance is followed by exploitation attempts.",
-            "Apply rate limiting or temporary blocking where operationally appropriate.",
-            "Correlate the event with firewall and endpoint security logs.",
-          ];
-        }
-
-        if (
-          attack.includes(
-            "ddos"
-          )
-        ) {
-          return [
-            "Investigate the distribution and concentration of traffic sources.",
-            "Review firewall and edge-device telemetry for correlated traffic spikes.",
-            "Apply rate limiting or traffic filtering where operationally appropriate.",
-            "Check service availability and resource utilisation during the event.",
-            "Correlate the detection with upstream network and application logs.",
-          ];
-        }
-
-        if (
-          attack.includes(
-            "dos"
-          )
-        ) {
-          return [
-            "Investigate the affected service and destination endpoints.",
-            "Review abnormal packet and byte-rate behaviour.",
-            "Inspect firewall and service logs for repeated requests.",
-            "Apply rate limiting or filtering where operationally appropriate.",
-            "Monitor the affected service for continued degradation.",
-          ];
-        }
-
-        if (
-          attack.includes(
-            "brute"
-          ) ||
-          attack.includes(
-            "patator"
-          )
-        ) {
-          return [
-            "Identify the targeted authentication or service endpoint.",
-            "Review repeated connection and authentication attempts.",
-            "Inspect account logs for suspicious login activity.",
-            "Apply rate limiting and account protection controls.",
-            "Correlate the event with authentication and endpoint telemetry.",
-          ];
-        }
-
-        if (
-          attack.includes(
-            "web"
-          )
-        ) {
-          return [
-            "Inspect requests targeting the affected web service.",
-            "Review web-server and application logs for malicious patterns.",
-            "Check for repeated requests originating from the same sources.",
-            "Apply appropriate WAF or request-filtering controls.",
-            "Correlate the event with application and endpoint security logs.",
-          ];
-        }
-
+      if (isNormal) {
         return [
-          "Investigate originating traffic sources and affected endpoints.",
-          "Review firewall and network telemetry for correlated events.",
-          "Inspect relevant service or application logs.",
-          "Apply containment controls where operationally appropriate.",
-          "Continue monitoring for repeated or escalating activity.",
+          "Continue monitoring the traffic source and maintain normal network logging.",
+          "Correlate future anomalies with firewall, endpoint and authentication logs.",
+          "Re-analyse new traffic captures if abnormal behaviour is observed.",
         ];
-      };
+      }
+
+      if (
+        attack.includes("portscan") ||
+        attack.includes("port scan")
+      ) {
+        return [
+          "Investigate originating source addresses associated with the scanning activity.",
+          "Review repeated connection attempts across destination ports.",
+          "Check whether reconnaissance is followed by exploitation attempts.",
+          "Apply rate limiting or temporary blocking where operationally appropriate.",
+          "Correlate the event with firewall and endpoint security logs.",
+        ];
+      }
+
+      if (attack.includes("ddos")) {
+        return [
+          "Investigate the distribution and concentration of traffic sources.",
+          "Review firewall and edge-device telemetry for correlated traffic spikes.",
+          "Apply rate limiting or traffic filtering where operationally appropriate.",
+          "Check service availability and resource utilisation during the event.",
+          "Correlate the detection with upstream network and application logs.",
+        ];
+      }
+
+      if (attack.includes("dos")) {
+        return [
+          "Investigate the affected service and destination endpoints.",
+          "Review abnormal packet and byte-rate behaviour.",
+          "Inspect firewall and service logs for repeated requests.",
+          "Apply rate limiting or filtering where operationally appropriate.",
+          "Monitor the affected service for continued degradation.",
+        ];
+      }
+
+      if (
+        attack.includes("brute") ||
+        attack.includes("patator")
+      ) {
+        return [
+          "Identify the targeted authentication or service endpoint.",
+          "Review repeated connection and authentication attempts.",
+          "Inspect account logs for suspicious login activity.",
+          "Apply rate limiting and account protection controls.",
+          "Correlate the event with authentication and endpoint telemetry.",
+        ];
+      }
+
+      if (attack.includes("web")) {
+        return [
+          "Inspect requests targeting the affected web service.",
+          "Review web-server and application logs for malicious patterns.",
+          "Check for repeated requests originating from the same sources.",
+          "Apply appropriate WAF or request-filtering controls.",
+          "Correlate the event with application and endpoint security logs.",
+        ];
+      }
+
+      return [
+        "Investigate originating traffic sources and affected endpoints.",
+        "Review firewall and network telemetry for correlated events.",
+        "Inspect relevant service or application logs.",
+        "Apply containment controls where operationally appropriate.",
+        "Continue monitoring for repeated or escalating activity.",
+      ];
+    };
 
     // =========================================================
     // PAGE 1 — EXECUTIVE SUMMARY
@@ -688,9 +629,7 @@ function DownloadReport({ data }) {
     );
 
     doc.text(
-      String(
-        prediction
-      ).toUpperCase(),
+      String(prediction).toUpperCase(),
       22,
       72
     );
@@ -702,9 +641,7 @@ function DownloadReport({ data }) {
     );
 
     doc.text(
-      `Detection confidence: ${confidence.toFixed(
-        2
-      )}%`,
+      `Detection confidence: ${confidence.toFixed(2)}%`,
       22,
       82
     );
@@ -716,13 +653,8 @@ function DownloadReport({ data }) {
     );
 
     // Risk score
-    doc.setDrawColor(
-      ...COLORS.white
-    );
-
-    doc.setLineWidth(
-      0.5
-    );
+    doc.setDrawColor(...COLORS.white);
+    doc.setLineWidth(0.5);
 
     doc.roundedRect(
       132,
@@ -744,9 +676,7 @@ function DownloadReport({ data }) {
       "RISK SCORE",
       160,
       61,
-      {
-        align: "center",
-      }
+      { align: "center" }
     );
 
     setText(
@@ -759,9 +689,7 @@ function DownloadReport({ data }) {
       `${riskScore}/100`,
       160,
       75,
-      {
-        align: "center",
-      }
+      { align: "center" }
     );
 
     setText(
@@ -776,16 +704,11 @@ function DownloadReport({ data }) {
         : "HIGHER = RISKIER",
       160,
       84,
-      {
-        align: "center",
-      }
+      { align: "center" }
     );
 
     // Analysis overview
-    setText(
-      13,
-      "bold"
-    );
+    setText(13, "bold");
 
     doc.text(
       "Analysis Overview",
@@ -793,99 +716,80 @@ function DownloadReport({ data }) {
       108
     );
 
-    autoTable(
-      doc,
-      {
-        startY: 114,
-        margin: {
-          left: 14,
-          right: 14,
-        },
-        theme: "grid",
-        head: [
-          [
-            "Analysis Property",
-            "Result",
-          ],
+    autoTable(doc, {
+      startY: 114,
+      margin: {
+        left: 14,
+        right: 14,
+      },
+      theme: "grid",
+      head: [
+        [
+          "Analysis Property",
+          "Result",
         ],
-        body: [
-          [
-            "Input File",
-            fileName,
-          ],
-          [
-            "Records Analysed",
-            recordCount,
-          ],
-          [
-            "Detection Architecture",
-            "Neuro-Symbolic AI",
-          ],
-          [
-            "Final Decision",
-            prediction,
-          ],
-          [
-            "Threat Level",
-            threat,
-          ],
-          [
-            "Risk Score",
-            `${riskScore}/100`,
-          ],
-          [
-            "Report ID",
-            reportId,
-          ],
-          [
-            "Generated",
-            generatedAt,
-          ],
+      ],
+      body: [
+        [
+          "Input File",
+          fileName,
         ],
-        headStyles: {
-          fillColor:
-            COLORS.dark,
-          textColor:
-            COLORS.white,
-          fontStyle:
-            "bold",
+        [
+          "Records Analysed",
+          recordCount,
+        ],
+        [
+          "Detection Architecture",
+          "Neuro-Symbolic AI",
+        ],
+        [
+          "Final Decision",
+          prediction,
+        ],
+        [
+          "Threat Level",
+          threat,
+        ],
+        [
+          "Risk Score",
+          `${riskScore}/100`,
+        ],
+        [
+          "Report ID",
+          reportId,
+        ],
+        [
+          "Generated",
+          generatedAt,
+        ],
+      ],
+      headStyles: {
+        fillColor: COLORS.dark,
+        textColor: COLORS.white,
+        fontStyle: "bold",
+      },
+      bodyStyles: {
+        textColor: [45, 45, 45],
+        fontSize: 8.1,
+      },
+      alternateRowStyles: {
+        fillColor: [248, 248, 248],
+      },
+      columnStyles: {
+        0: {
+          cellWidth: 65,
+          fontStyle: "bold",
         },
-        bodyStyles: {
-          textColor: [
-            45,
-            45,
-            45,
-          ],
-          fontSize: 8.1,
+        1: {
+          cellWidth: 117,
         },
-        alternateRowStyles: {
-          fillColor: [
-            248,
-            248,
-            248,
-          ],
-        },
-        columnStyles: {
-          0: {
-            cellWidth: 65,
-            fontStyle:
-              "bold",
-          },
-          1: {
-            cellWidth: 117,
-          },
-        },
-      }
-    );
+      },
+    });
 
     let y =
-      doc.lastAutoTable
-        .finalY + 9;
+      doc.lastAutoTable.finalY + 9;
 
-    setText(
-      13,
-      "bold"
-    );
+    setText(13, "bold");
 
     doc.text(
       "AEGIS-NSAI Detection Architecture",
@@ -993,10 +897,7 @@ function DownloadReport({ data }) {
       "How AEGIS-NSAI reached the final classification"
     );
 
-    setText(
-      13,
-      "bold"
-    );
+    setText(13, "bold");
 
     doc.text(
       "Decision Pipeline",
@@ -1010,11 +911,7 @@ function DownloadReport({ data }) {
       58,
       78,
       39,
-      [
-        239,
-        246,
-        255,
-      ]
+      [239, 246, 255]
     );
 
     setText(
@@ -1027,9 +924,7 @@ function DownloadReport({ data }) {
       "NEURAL MODEL",
       53,
       68,
-      {
-        align: "center",
-      }
+      { align: "center" }
     );
 
     setText(
@@ -1039,14 +934,10 @@ function DownloadReport({ data }) {
     );
 
     doc.text(
-      String(
-        mlPrediction
-      ),
+      String(mlPrediction),
       53,
       80,
-      {
-        align: "center",
-      }
+      { align: "center" }
     );
 
     setText(
@@ -1056,14 +947,10 @@ function DownloadReport({ data }) {
     );
 
     doc.text(
-      `${confidence.toFixed(
-        2
-      )}% confidence`,
+      `${confidence.toFixed(2)}% confidence`,
       53,
       89,
-      {
-        align: "center",
-      }
+      { align: "center" }
     );
 
     // Symbolic engine
@@ -1072,11 +959,7 @@ function DownloadReport({ data }) {
       58,
       78,
       39,
-      [
-        240,
-        253,
-        250,
-      ]
+      [240, 253, 250]
     );
 
     setText(
@@ -1089,9 +972,7 @@ function DownloadReport({ data }) {
       "SYMBOLIC ENGINE",
       157,
       68,
-      {
-        align: "center",
-      }
+      { align: "center" }
     );
 
     setText(
@@ -1106,9 +987,7 @@ function DownloadReport({ data }) {
         : `${prediction} evidence`,
       157,
       80,
-      {
-        align: "center",
-      }
+      { align: "center" }
     );
 
     setText(
@@ -1118,14 +997,10 @@ function DownloadReport({ data }) {
     );
 
     doc.text(
-      `${symbolicEvidence.toFixed(
-        2
-      )}% rule support`,
+      `${symbolicEvidence.toFixed(2)}% rule support`,
       157,
       89,
-      {
-        align: "center",
-      }
+      { align: "center" }
     );
 
     setText(
@@ -1138,9 +1013,7 @@ function DownloadReport({ data }) {
       "+",
       105,
       78,
-      {
-        align: "center",
-      }
+      { align: "center" }
     );
 
     // Fusion
@@ -1162,9 +1035,7 @@ function DownloadReport({ data }) {
       "NEURO-SYMBOLIC FUSION",
       105,
       114,
-      {
-        align: "center",
-      }
+      { align: "center" }
     );
 
     setText(
@@ -1174,14 +1045,10 @@ function DownloadReport({ data }) {
     );
 
     doc.text(
-      `FINAL: ${String(
-        prediction
-      ).toUpperCase()}`,
+      `FINAL: ${String(prediction).toUpperCase()}`,
       105,
       126,
-      {
-        align: "center",
-      }
+      { align: "center" }
     );
 
     setText(
@@ -1194,16 +1061,11 @@ function DownloadReport({ data }) {
       "↓",
       105,
       143,
-      {
-        align: "center",
-      }
+      { align: "center" }
     );
 
     // Neural analysis
-    setText(
-      13,
-      "bold"
-    );
+    setText(13, "bold");
 
     doc.text(
       "Neural Model Analysis",
@@ -1237,9 +1099,7 @@ function DownloadReport({ data }) {
     );
 
     doc.text(
-      String(
-        mlPrediction
-      ),
+      String(mlPrediction),
       22,
       187
     );
@@ -1251,9 +1111,7 @@ function DownloadReport({ data }) {
     );
 
     doc.text(
-      `Neural confidence: ${confidence.toFixed(
-        2
-      )}%`,
+      `Neural confidence: ${confidence.toFixed(2)}%`,
       22,
       197
     );
@@ -1286,9 +1144,7 @@ function DownloadReport({ data }) {
     );
 
     doc.text(
-      String(
-        mlDominant
-      ),
+      String(mlDominant),
       108,
       185
     );
@@ -1300,21 +1156,15 @@ function DownloadReport({ data }) {
     );
 
     doc.text(
-      mlDominantCoverage >
-        0
-        ? `${mlDominantCoverage.toFixed(
-            2
-          )}% of analysed records`
+      mlDominantCoverage > 0
+        ? `${mlDominantCoverage.toFixed(2)}% of analysed records`
         : "Dataset-level result",
       108,
       196
     );
 
     // Symbolic reasoning
-    setText(
-      13,
-      "bold"
-    );
+    setText(13, "bold");
 
     doc.text(
       "Symbolic Reasoning Analysis",
@@ -1362,17 +1212,12 @@ function DownloadReport({ data }) {
     );
 
     doc.text(
-      `Evidence score: ${symbolicEvidence.toFixed(
-        2
-      )}%`,
+      `Evidence score: ${symbolicEvidence.toFixed(2)}%`,
       22,
       258
     );
 
-    if (
-      knowledgeGraph.length >
-      0
-    ) {
+    if (knowledgeGraph.length > 0) {
       setText(
         8,
         "bold",
@@ -1387,39 +1232,33 @@ function DownloadReport({ data }) {
 
       knowledgeGraph
         .slice(0, 3)
-        .forEach(
-          (
-            item,
-            index
-          ) => {
-            const itemY =
-              246 +
-              index * 6;
+        .forEach((item, index) => {
+          const itemY =
+            246 + index * 6;
 
-            doc.setFillColor(
-              ...COLORS.cyan
-            );
+          doc.setFillColor(
+            ...COLORS.cyan
+          );
 
-            doc.circle(
-              121,
-              itemY - 1.5,
-              1,
-              "F"
-            );
+          doc.circle(
+            121,
+            itemY - 1.5,
+            1,
+            "F"
+          );
 
-            setText(
-              7.3,
-              "normal",
-              COLORS.dark
-            );
+          setText(
+            7.3,
+            "normal",
+            COLORS.dark
+          );
 
-            doc.text(
-              String(item),
-              126,
-              itemY
-            );
-          }
-        );
+          doc.text(
+            String(item),
+            126,
+            itemY
+          );
+        });
     }
 
     setText(
@@ -1446,11 +1285,8 @@ function DownloadReport({ data }) {
       )}% | Symbolic evidence = ${symbolicEvidence.toFixed(
         2
       )}% | Dataset dominance = ${
-        mlDominantCoverage >
-        0
-          ? mlDominantCoverage.toFixed(
-              2
-            )
+        mlDominantCoverage > 0
+          ? mlDominantCoverage.toFixed(2)
           : "N/A"
       }%`,
       45,
@@ -1470,10 +1306,6 @@ function DownloadReport({ data }) {
       "Security interpretation and recommended analyst actions"
     );
 
-    // ---------------------------------------------------------
-    // KNOWLEDGE GRAPH
-    // ---------------------------------------------------------
-
     setText(
       12.5,
       "bold"
@@ -1485,10 +1317,7 @@ function DownloadReport({ data }) {
       49
     );
 
-    if (
-      knowledgeGraph.length >
-      0
-    ) {
+    if (knowledgeGraph.length > 0) {
       const centerX = 105;
 
       roundedBox(
@@ -1506,96 +1335,64 @@ function DownloadReport({ data }) {
       );
 
       doc.text(
-        String(
-          prediction
-        ),
+        String(prediction),
         centerX,
         68,
-        {
-          align: "center",
-        }
+        { align: "center" }
       );
 
       const positions = [
-        {
-          x: 18,
-          y: 84,
-        },
-        {
-          x: 77,
-          y: 84,
-        },
-        {
-          x: 136,
-          y: 84,
-        },
+        { x: 18, y: 84 },
+        { x: 77, y: 84 },
+        { x: 136, y: 84 },
       ];
 
       knowledgeGraph
         .slice(0, 3)
-        .forEach(
-          (
-            item,
-            index
-          ) => {
-            const position =
-              positions[index];
+        .forEach((item, index) => {
+          const position =
+            positions[index];
 
-            doc.setDrawColor(
-              ...COLORS.gray
+          doc.setDrawColor(
+            ...COLORS.gray
+          );
+
+          doc.setLineWidth(0.5);
+
+          doc.line(
+            centerX,
+            76,
+            position.x + 28,
+            position.y
+          );
+
+          roundedBox(
+            position.x,
+            position.y,
+            56,
+            17,
+            [245, 247, 250]
+          );
+
+          setText(
+            7.2,
+            "bold",
+            COLORS.dark
+          );
+
+          const itemLines =
+            doc.splitTextToSize(
+              String(item),
+              48
             );
 
-            doc.setLineWidth(
-              0.5
-            );
-
-            doc.line(
-              centerX,
-              76,
-              position.x +
-                28,
-              position.y
-            );
-
-            roundedBox(
-              position.x,
-              position.y,
-              56,
-              17,
-              [
-                245,
-                247,
-                250,
-              ]
-            );
-
-            setText(
-              7.2,
-              "bold",
-              COLORS.dark
-            );
-
-            const itemLines =
-              doc.splitTextToSize(
-                String(
-                  item
-                ),
-                48
-              );
-
-            doc.text(
-              itemLines,
-              position.x +
-                28,
-              position.y +
-                8,
-              {
-                align:
-                  "center",
-              }
-            );
-          }
-        );
+          doc.text(
+            itemLines,
+            position.x + 28,
+            position.y + 8,
+            { align: "center" }
+          );
+        });
     } else {
       outlineBox(
         14,
@@ -1614,17 +1411,11 @@ function DownloadReport({ data }) {
         "No knowledge-graph indicators were returned.",
         105,
         74,
-        {
-          align:
-            "center",
-        }
+        { align: "center" }
       );
     }
 
-    // ---------------------------------------------------------
-    // SECURITY INTERPRETATION
-    // ---------------------------------------------------------
-
+    // Security interpretation
     setText(
       12.5,
       "bold"
@@ -1644,41 +1435,23 @@ function DownloadReport({ data }) {
     );
 
     const attack =
-      String(
-        prediction
-      ).toLowerCase();
+      String(prediction).toLowerCase();
 
     let interpretation;
 
     if (isNormal) {
       interpretation =
         "The analysed traffic was classified as normal. No malicious final classification was produced by the AEGIS-NSAI detection pipeline. Continued monitoring and correlation with other security telemetry is recommended.";
-    } else if (
-      attack.includes(
-        "port"
-      )
-    ) {
+    } else if (attack.includes("port")) {
       interpretation =
         "The analysed traffic exhibits characteristics associated with network reconnaissance and systematic probing of accessible services. This activity may indicate attempts to discover open ports and identify potentially exploitable network services.";
-    } else if (
-      attack.includes(
-        "ddos"
-      )
-    ) {
+    } else if (attack.includes("ddos")) {
       interpretation =
         "The analysed traffic was classified as distributed denial-of-service activity. The detected pattern may affect service availability and should be correlated with network and application telemetry.";
-    } else if (
-      attack.includes(
-        "dos"
-      )
-    ) {
+    } else if (attack.includes("dos")) {
       interpretation =
         "The analysed traffic was classified as denial-of-service activity. The event should be correlated with service logs, packet-rate behaviour and resource utilisation.";
-    } else if (
-      attack.includes(
-        "web"
-      )
-    ) {
+    } else if (attack.includes("web")) {
       interpretation =
         "The analysed traffic was classified as a web attack pattern. The event should be correlated with web-server and application logs to determine the targeted resource and potential exploitation attempts.";
     } else {
@@ -1700,10 +1473,7 @@ function DownloadReport({ data }) {
       3.7
     );
 
-    // ---------------------------------------------------------
-    // EVIDENCE SUMMARY
-    // ---------------------------------------------------------
-
+    // Evidence summary
     setText(
       12.5,
       "bold"
@@ -1715,112 +1485,85 @@ function DownloadReport({ data }) {
       156
     );
 
-    autoTable(
-      doc,
-      {
-        startY: 162,
-        margin: {
-          left: 14,
-          right: 14,
-        },
-        theme: "grid",
-        head: [
-          [
-            "Component",
-            "Finding",
-            "Result",
-          ],
+    autoTable(doc, {
+      startY: 162,
+      margin: {
+        left: 14,
+        right: 14,
+      },
+      theme: "grid",
+      head: [
+        [
+          "Component",
+          "Finding",
+          "Result",
         ],
-        body: [
-          [
-            "Neural Detector",
-            String(
-              mlPrediction
-            ),
-            `${confidence.toFixed(
-              2
-            )}%`,
-          ],
-          [
-            "Symbolic Engine",
-            isNormal
-              ? "No dominant malicious evidence"
-              : `${prediction} supporting evidence`,
-            `${symbolicEvidence.toFixed(
-              2
-            )}%`,
-          ],
-          [
-            "Knowledge Graph",
-            knowledgeGraph.length
-              ? knowledgeGraph.join(
-                  ", "
-                )
-              : "No indicators",
-            knowledgeGraph.length
-              ? "Linked"
-              : "N/A",
-          ],
-          [
-            "Fusion Layer",
-            String(
-              prediction
-            ),
-            "FINAL",
-          ],
-          [
-            "Threat Assessment",
-            threat,
-            `${riskScore}/100`,
-          ],
+      ],
+      body: [
+        [
+          "Neural Detector",
+          String(mlPrediction),
+          `${confidence.toFixed(2)}%`,
         ],
-        headStyles: {
-          fillColor:
-            COLORS.dark,
-          textColor:
-            COLORS.white,
-          fontStyle:
-            "bold",
-          fontSize: 7.5,
+        [
+          "Symbolic Engine",
+          isNormal
+            ? "No dominant malicious evidence"
+            : `${prediction} supporting evidence`,
+          `${symbolicEvidence.toFixed(2)}%`,
+        ],
+        [
+          "Knowledge Graph",
+          knowledgeGraph.length
+            ? knowledgeGraph.join(", ")
+            : "No indicators",
+          knowledgeGraph.length
+            ? "Linked"
+            : "N/A",
+        ],
+        [
+          "Fusion Layer",
+          String(prediction),
+          "FINAL",
+        ],
+        [
+          "Threat Assessment",
+          threat,
+          `${riskScore}/100`,
+        ],
+      ],
+      headStyles: {
+        fillColor: COLORS.dark,
+        textColor: COLORS.white,
+        fontStyle: "bold",
+        fontSize: 7.5,
+      },
+      bodyStyles: {
+        fontSize: 7,
+        textColor: COLORS.dark,
+        cellPadding: 1.4,
+      },
+      alternateRowStyles: {
+        fillColor: [248, 248, 248],
+      },
+      columnStyles: {
+        0: {
+          cellWidth: 42,
+          fontStyle: "bold",
         },
-        bodyStyles: {
-          fontSize: 7,
-          textColor:
-            COLORS.dark,
-          cellPadding: 1.4,
+        1: {
+          cellWidth: 105,
         },
-        alternateRowStyles: {
-          fillColor: [
-            248,
-            248,
-            248,
-          ],
+        2: {
+          cellWidth: 35,
+          halign: "center",
         },
-        columnStyles: {
-          0: {
-            cellWidth: 42,
-            fontStyle:
-              "bold",
-          },
-          1: {
-            cellWidth: 105,
-          },
-          2: {
-            cellWidth: 35,
-            halign:
-              "center",
-          },
-        },
-      }
-    );
+      },
+    });
 
-    // ---------------------------------------------------------
-    // WHY THIS CLASSIFICATION MATTERS
-    // ---------------------------------------------------------
-
+    // Why classification matters
     const whyTitleY =
-      doc.lastAutoTable
-        .finalY + 6;
+      doc.lastAutoTable.finalY + 6;
 
     setText(
       12.5,
@@ -1845,32 +1588,16 @@ function DownloadReport({ data }) {
 
     let whyText;
 
-    if (
-      attack.includes(
-        "port"
-      )
-    ) {
+    if (attack.includes("port")) {
       whyText =
         "Port scanning is commonly associated with reconnaissance activity in which an actor probes network services to identify reachable ports and potential attack surfaces. Detection should therefore be correlated with source addresses, destination-port patterns and subsequent exploitation attempts.";
-    } else if (
-      attack.includes(
-        "ddos"
-      )
-    ) {
+    } else if (attack.includes("ddos")) {
       whyText =
         "Distributed denial-of-service activity can affect service availability through coordinated traffic. Investigation should consider traffic sources, affected services, resource utilisation and upstream network telemetry.";
-    } else if (
-      attack.includes(
-        "dos"
-      )
-    ) {
+    } else if (attack.includes("dos")) {
       whyText =
         "Denial-of-service activity may affect service availability through abnormal traffic behaviour. Investigation should correlate the detection with service logs, resource utilisation and network telemetry.";
-    } else if (
-      attack.includes(
-        "web"
-      )
-    ) {
+    } else if (attack.includes("web")) {
       whyText =
         "Web attack activity may target application endpoints through suspicious request patterns. Correlation with web-server, application and authentication logs is required to determine whether exploitation occurred.";
     } else if (isNormal) {
@@ -1895,10 +1622,7 @@ function DownloadReport({ data }) {
       3.6
     );
 
-    // ---------------------------------------------------------
-    // RECOMMENDED ANALYST ACTIONS
-    // ---------------------------------------------------------
-
+    // Recommended actions
     const recommendationTitleY =
       whyBoxY + 35;
 
@@ -1931,77 +1655,63 @@ function DownloadReport({ data }) {
     );
 
     const leftActions =
-      recommendations.slice(
-        0,
-        3
-      );
+      recommendations.slice(0, 3);
 
     const rightActions =
-      recommendations.slice(
-        3,
-        5
+      recommendations.slice(3, 5);
+
+    const drawActionColumn = (
+      actions,
+      x,
+      width,
+      startingIndex
+    ) => {
+      let currentY =
+        actionBoxY + 5;
+
+      actions.forEach(
+        (recommendation, index) => {
+          const globalIndex =
+            startingIndex + index;
+
+          setText(
+            6.8,
+            "bold",
+            threatColor
+          );
+
+          doc.text(
+            `${globalIndex + 1}.`,
+            x,
+            currentY
+          );
+
+          setText(
+            6.5,
+            "normal",
+            COLORS.dark
+          );
+
+          const lines =
+            doc.splitTextToSize(
+              recommendation,
+              width - 8
+            );
+
+          doc.text(
+            lines,
+            x + 7,
+            currentY
+          );
+
+          currentY +=
+            Math.max(
+              5,
+              lines.length * 2.7
+            ) + 1;
+        }
       );
-
-    // IMPORTANT:
-    // Right column numbering starts from 4, not 1.
-    const drawActionColumn =
-      (
-        actions,
-        x,
-        width,
-        startingIndex
-      ) => {
-        let currentY =
-          actionBoxY + 5;
-
-        actions.forEach(
-          (
-            recommendation,
-            index
-          ) => {
-            const globalIndex =
-              startingIndex +
-              index;
-
-            setText(
-              6.8,
-              "bold",
-              threatColor
-            );
-
-            doc.text(
-              `${globalIndex + 1}.`,
-              x,
-              currentY
-            );
-
-            setText(
-              6.5,
-              "normal",
-              COLORS.dark
-            );
-
-            const lines =
-              doc.splitTextToSize(
-                recommendation,
-                width - 8
-              );
-
-            doc.text(
-              lines,
-              x + 7,
-              currentY
-            );
-
-            currentY +=
-              Math.max(
-                5,
-                lines.length *
-                  2.7
-              ) + 1;
-          }
-        );
-      };
+    };
 
     drawActionColumn(
       leftActions,
@@ -2042,10 +1752,6 @@ function DownloadReport({ data }) {
       "Independent evaluation of the underlying intrusion detection model"
     );
 
-    // ---------------------------------------------------------
-    // HELD-OUT TEST EVALUATION
-    // ---------------------------------------------------------
-
     setText(
       12.5,
       "bold"
@@ -2069,103 +1775,86 @@ function DownloadReport({ data }) {
       56
     );
 
-    autoTable(
-      doc,
-      {
-        startY: 62,
-        margin: {
-          left: 14,
-          right: 14,
-        },
-        theme: "grid",
-        head: [
-          [
-            "Evaluation Metric",
-            "Result",
-          ],
+    autoTable(doc, {
+      startY: 62,
+      margin: {
+        left: 14,
+        right: 14,
+      },
+      theme: "grid",
+      head: [
+        [
+          "Evaluation Metric",
+          "Result",
         ],
-        body: [
-          [
-            "Accuracy",
-            `${validationMetrics.accuracy}%`,
-          ],
-          [
-            "Macro Precision",
-            `${validationMetrics.macroPrecision}%`,
-          ],
-          [
-            "Macro Recall",
-            `${validationMetrics.macroRecall}%`,
-          ],
-          [
-            "Macro F1",
-            `${validationMetrics.macroF1}%`,
-          ],
-          [
-            "Weighted Precision",
-            `${validationMetrics.weightedPrecision}%`,
-          ],
-          [
-            "Weighted Recall",
-            `${validationMetrics.weightedRecall}%`,
-          ],
-          [
-            "Weighted F1",
-            `${validationMetrics.weightedF1}%`,
-          ],
-          [
-            "Average Confidence",
-            `${validationMetrics.averageConfidence}%`,
-          ],
-          [
-            "Held-Out Test Samples",
-            validationMetrics.testSamples.toLocaleString(),
-          ],
+      ],
+      body: [
+        [
+          "Accuracy",
+          `${validationMetrics.accuracy}%`,
         ],
-        headStyles: {
-          fillColor:
-            COLORS.dark,
-          textColor:
-            COLORS.white,
-          fontStyle:
-            "bold",
-          fontSize: 7.7,
+        [
+          "Macro Precision",
+          `${validationMetrics.macroPrecision}%`,
+        ],
+        [
+          "Macro Recall",
+          `${validationMetrics.macroRecall}%`,
+        ],
+        [
+          "Macro F1",
+          `${validationMetrics.macroF1}%`,
+        ],
+        [
+          "Weighted Precision",
+          `${validationMetrics.weightedPrecision}%`,
+        ],
+        [
+          "Weighted Recall",
+          `${validationMetrics.weightedRecall}%`,
+        ],
+        [
+          "Weighted F1",
+          `${validationMetrics.weightedF1}%`,
+        ],
+        [
+          "Average Confidence",
+          `${validationMetrics.averageConfidence}%`,
+        ],
+        [
+          "Held-Out Test Samples",
+          validationMetrics.testSamples.toLocaleString(),
+        ],
+      ],
+      headStyles: {
+        fillColor: COLORS.dark,
+        textColor: COLORS.white,
+        fontStyle: "bold",
+        fontSize: 7.7,
+      },
+      bodyStyles: {
+        fontSize: 7.2,
+        textColor: COLORS.dark,
+        cellPadding: 1.2,
+      },
+      alternateRowStyles: {
+        fillColor: [248, 248, 248],
+      },
+      columnStyles: {
+        0: {
+          cellWidth: 105,
+          fontStyle: "bold",
         },
-        bodyStyles: {
-          fontSize: 7.2,
-          textColor:
-            COLORS.dark,
-          cellPadding: 1.2,
+        1: {
+          cellWidth: 77,
+          halign: "center",
         },
-        alternateRowStyles: {
-          fillColor: [
-            248,
-            248,
-            248,
-          ],
-        },
-        columnStyles: {
-          0: {
-            cellWidth: 105,
-            fontStyle:
-              "bold",
-          },
-          1: {
-            cellWidth: 77,
-            halign:
-              "center",
-          },
-        },
-      }
-    );
+      },
+    });
 
-    // ---------------------------------------------------------
-    // DETECTION SYSTEM PROFILE
-    // ---------------------------------------------------------
-
+    // Detection system profile
     let profileY =
-      doc.lastAutoTable
-        .finalY + 7;
+      doc.lastAutoTable.finalY + 7;
 
     setText(
       12.5,
@@ -2180,97 +1869,81 @@ function DownloadReport({ data }) {
 
     profileY += 5;
 
-    autoTable(
-      doc,
-      {
-        startY: profileY,
-        margin: {
-          left: 14,
-          right: 14,
-        },
-        theme: "grid",
-        head: [
-          [
-            "Property",
-            "Configuration",
-          ],
+    autoTable(doc, {
+      startY: profileY,
+      margin: {
+        left: 14,
+        right: 14,
+      },
+      theme: "grid",
+      head: [
+        [
+          "Property",
+          "Configuration",
         ],
-        body: [
-          [
-            "System",
-            "AEGIS-NSAI",
-          ],
-          [
-            "Architecture",
-            "Neuro-Symbolic AI",
-          ],
-          [
-            "ML Framework",
-            "PyTorch",
-          ],
-          [
-            "Input Features",
-            "78",
-          ],
-          [
-            "Attack Classes",
-            "15",
-          ],
-          [
-            "Reasoning Layer",
-            "Rule-based symbolic engine",
-          ],
-          [
-            "Knowledge Layer",
-            "Security knowledge graph",
-          ],
-          [
-            "Decision Layer",
-            "ML + symbolic fusion",
-          ],
+      ],
+      body: [
+        [
+          "System",
+          "AEGIS-NSAI",
         ],
-        headStyles: {
-          fillColor:
-            COLORS.blue,
-          textColor:
-            COLORS.white,
-          fontStyle:
-            "bold",
-          fontSize: 7.7,
+        [
+          "Architecture",
+          "Neuro-Symbolic AI",
+        ],
+        [
+          "ML Framework",
+          "PyTorch",
+        ],
+        [
+          "Input Features",
+          "78",
+        ],
+        [
+          "Attack Classes",
+          "15",
+        ],
+        [
+          "Reasoning Layer",
+          "Rule-based symbolic engine",
+        ],
+        [
+          "Knowledge Layer",
+          "Security knowledge graph",
+        ],
+        [
+          "Decision Layer",
+          "ML + symbolic fusion",
+        ],
+      ],
+      headStyles: {
+        fillColor: COLORS.blue,
+        textColor: COLORS.white,
+        fontStyle: "bold",
+        fontSize: 7.7,
+      },
+      bodyStyles: {
+        fontSize: 7.1,
+        textColor: COLORS.dark,
+        cellPadding: 1.15,
+      },
+      alternateRowStyles: {
+        fillColor: [248, 248, 248],
+      },
+      columnStyles: {
+        0: {
+          cellWidth: 65,
+          fontStyle: "bold",
         },
-        bodyStyles: {
-          fontSize: 7.1,
-          textColor:
-            COLORS.dark,
-          cellPadding: 1.15,
+        1: {
+          cellWidth: 117,
         },
-        alternateRowStyles: {
-          fillColor: [
-            248,
-            248,
-            248,
-          ],
-        },
-        columnStyles: {
-          0: {
-            cellWidth: 65,
-            fontStyle:
-              "bold",
-          },
-          1: {
-            cellWidth: 117,
-          },
-        },
-      }
-    );
+      },
+    });
 
-    // ---------------------------------------------------------
-    // RESEARCH INTERPRETATION
-    // ---------------------------------------------------------
-
+    // Research interpretation
     let researchY =
-      doc.lastAutoTable
-        .finalY + 7;
+      doc.lastAutoTable.finalY + 7;
 
     setText(
       12.5,
@@ -2310,10 +1983,7 @@ function DownloadReport({ data }) {
       3.6
     );
 
-    // ---------------------------------------------------------
-    // MODEL & ANALYSIS LIMITATIONS
-    // ---------------------------------------------------------
-
+    // Limitations
     const limitationTitleY =
       researchBoxY + 34;
 
@@ -2340,8 +2010,6 @@ function DownloadReport({ data }) {
     const limitationBoxY =
       limitationTitleY + 5;
 
-    // Slightly shorter box so Overall Assessment has
-    // a comfortable independent area below it.
     const limitationBoxHeight = 33;
 
     roundedBox(
@@ -2354,77 +2022,63 @@ function DownloadReport({ data }) {
     );
 
     const leftLimitations =
-      limitations.slice(
-        0,
-        3
-      );
+      limitations.slice(0, 3);
 
     const rightLimitations =
-      limitations.slice(
-        3,
-        6
+      limitations.slice(3, 6);
+
+    const drawLimitationColumn = (
+      items,
+      x,
+      width,
+      startingIndex
+    ) => {
+      let currentY =
+        limitationBoxY + 5;
+
+      items.forEach(
+        (limitation, index) => {
+          const globalIndex =
+            startingIndex + index;
+
+          setText(
+            6.6,
+            "bold",
+            COLORS.blue
+          );
+
+          doc.text(
+            `${globalIndex + 1}.`,
+            x,
+            currentY
+          );
+
+          setText(
+            6.25,
+            "normal",
+            COLORS.dark
+          );
+
+          const lines =
+            doc.splitTextToSize(
+              limitation,
+              width - 8
+            );
+
+          doc.text(
+            lines,
+            x + 7,
+            currentY
+          );
+
+          currentY +=
+            Math.max(
+              5,
+              lines.length * 2.6
+            ) + 1;
+        }
       );
-
-    // IMPORTANT:
-    // Right column numbering starts from 4.
-    const drawLimitationColumn =
-      (
-        items,
-        x,
-        width,
-        startingIndex
-      ) => {
-        let currentY =
-          limitationBoxY + 5;
-
-        items.forEach(
-          (
-            limitation,
-            index
-          ) => {
-            const globalIndex =
-              startingIndex +
-              index;
-
-            setText(
-              6.6,
-              "bold",
-              COLORS.blue
-            );
-
-            doc.text(
-              `${globalIndex + 1}.`,
-              x,
-              currentY
-            );
-
-            setText(
-              6.25,
-              "normal",
-              COLORS.dark
-            );
-
-            const lines =
-              doc.splitTextToSize(
-                limitation,
-                width - 8
-              );
-
-            doc.text(
-              lines,
-              x + 7,
-              currentY
-            );
-
-            currentY +=
-              Math.max(
-                5,
-                lines.length *
-                  2.6
-              ) + 1;
-          }
-        );
-      };
+    };
 
     drawLimitationColumn(
       leftLimitations,
@@ -2440,23 +2094,7 @@ function DownloadReport({ data }) {
       3
     );
 
-    // ---------------------------------------------------------
-    // OVERALL ASSESSMENT
-    // ---------------------------------------------------------
-
-    /*
-     * IMPORTANT LAYOUT FIX:
-     *
-     * The previous version placed an additional validation note
-     * between the heading and the assessment text. That note was
-     * causing the visible overlap.
-     *
-     * It has been removed.
-     *
-     * The validation table at the top of this page already clearly
-     * establishes that the metrics are held-out model metrics.
-     */
-
+    // Overall assessment
     const overallTitleY =
       limitationBoxY +
       limitationBoxHeight +
@@ -2493,9 +2131,6 @@ function DownloadReport({ data }) {
       182,
       3.7
     );
-
-    // No extra note here.
-    // The held-out evaluation explanation is already above.
 
     drawFooter(4);
 
