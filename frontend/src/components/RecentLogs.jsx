@@ -74,10 +74,86 @@ function RecentLogs({ logs = [] }) {
 
 
   /* =========================================================
-     DISPLAY NEWEST DETECTIONS FIRST
+     NEWEST FIRST
   ========================================================= */
 
-  const displayedLogs = [...safeLogs].reverse();
+  const displayedLogs =
+    [...safeLogs].reverse();
+
+
+  /* =========================================================
+     EMPTY STATE
+  ========================================================= */
+
+  if (safeLogs.length === 0) {
+    return (
+      <div
+        className="info-card recent-logs"
+        style={{
+          width: "100%",
+          padding: "20px 22px",
+        }}
+      >
+
+        <div
+          style={{
+            textAlign: "center",
+          }}
+        >
+          <h3
+            style={{
+              margin: 0,
+              fontSize: "22px",
+              fontWeight: "700",
+            }}
+          >
+            Recent Detections
+          </h3>
+
+          <div
+            style={{
+              minHeight: "120px",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#8f8f8f",
+            }}
+          >
+
+            <FaShieldAlt
+              size={32}
+              style={{
+                marginBottom: "10px",
+                opacity: 0.5,
+              }}
+            />
+
+            <h4
+              style={{
+                margin: "0 0 5px",
+                color: "#d4d4d8",
+              }}
+            >
+              No detections yet
+            </h4>
+
+            <p
+              style={{
+                margin: 0,
+                fontSize: "13px",
+              }}
+            >
+              Upload a CSV file to begin
+              network analysis.
+            </p>
+
+          </div>
+        </div>
+
+      </div>
+    );
+  }
 
 
   /* =========================================================
@@ -85,22 +161,31 @@ function RecentLogs({ logs = [] }) {
   ========================================================= */
 
   return (
-    <div className="info-card recent-logs">
+    <div
+      className="info-card recent-logs"
+      style={{
+        width: "100%",
+        padding: "20px 22px",
+      }}
+    >
+
+      {/* HEADER */}
 
       <div
         style={{
           display: "flex",
-          justifyContent: "space-between",
           alignItems: "center",
-          gap: "15px",
-          marginBottom: "30px",
-          flexWrap: "wrap",
+          justifyContent: "space-between",
+          gap: "12px",
+          marginBottom: "12px",
         }}
       >
 
         <h3
           style={{
             margin: 0,
+            fontSize: "22px",
+            fontWeight: "700",
           }}
         >
           Recent Detections
@@ -108,12 +193,13 @@ function RecentLogs({ logs = [] }) {
 
         <span
           style={{
-            background: "#222",
+            background: "#222222",
             color: "#22c55e",
-            padding: "6px 14px",
+            padding: "5px 12px",
             borderRadius: "20px",
-            fontSize: "13px",
+            fontSize: "12px",
             fontWeight: "700",
+            whiteSpace: "nowrap",
           }}
         >
           {safeLogs.length}{" "}
@@ -125,249 +211,299 @@ function RecentLogs({ logs = [] }) {
       </div>
 
 
-      {safeLogs.length === 0 ? (
+      {/* COLUMN HEADERS */}
 
-        <div
-          style={{
-            textAlign: "center",
-            padding: "45px",
-            color: "#8f8f8f",
-          }}
-        >
-
-          <FaShieldAlt
-            size={45}
-            style={{
-              marginBottom: "18px",
-              opacity: 0.5,
-            }}
-          />
-
-          <h4>
-            No detections yet
-          </h4>
-
-          <p>
-            Upload a CSV file to begin
-            network analysis.
-          </p>
-
-        </div>
-
-      ) : (
-
-        <div className="logs">
-
-          {displayedLogs.map(
-            (log, index) => {
-
-              const confidence =
-                Number(log?.confidence);
-
-              const safeConfidence =
-                Number.isFinite(confidence)
-                  ? confidence
-                  : 0;
-
-              const prediction =
-                log?.prediction ||
-                "Unknown";
-
-              const severity =
-                getSeverity(
-                  prediction,
-                  safeConfidence
-                );
-
-              const detectionId =
-                log?.id ||
-                `DET-${String(
-                  safeLogs.length - index
-                ).padStart(3, "0")}`;
-
-              const filename =
-                log?.filename ||
-                "Uploaded network dataset";
-
-              /*
-               * App.jsx stores the timestamp
-               * under `timestamp`.
-               *
-               * `time` is retained as a fallback
-               * for older saved history entries.
-               */
-              const timestamp =
-                log?.timestamp ||
-                log?.time ||
-                "Unknown time";
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns:
+            "0.8fr 1.7fr 1.2fr 1.1fr 0.8fr 0.7fr",
+          gap: "10px",
+          padding: "8px 12px",
+          color: "#777777",
+          fontSize: "10px",
+          fontWeight: "700",
+          textTransform: "uppercase",
+          letterSpacing: "0.7px",
+        }}
+      >
+        <span>Detection</span>
+        <span>Dataset</span>
+        <span>Time</span>
+        <span>Prediction</span>
+        <span>Confidence</span>
+        <span>Severity</span>
+      </div>
 
 
-              return (
+      {/* DETECTION ROWS */}
+
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: "7px",
+        }}
+      >
+
+        {displayedLogs.map(
+          (log, index) => {
+
+            const confidence =
+              Number(log?.confidence);
+
+            const safeConfidence =
+              Number.isFinite(confidence)
+                ? confidence
+                : 0;
+
+            const prediction =
+              log?.prediction ||
+              "Unknown";
+
+            const severity =
+              getSeverity(
+                prediction,
+                safeConfidence
+              );
+
+            const detectionId =
+              log?.id ||
+              `DET-${String(
+                safeLogs.length - index
+              ).padStart(3, "0")}`;
+
+            const filename =
+              log?.filename ||
+              "Uploaded network dataset";
+
+            const timestamp =
+              log?.timestamp ||
+              log?.time ||
+              "Unknown time";
+
+
+            return (
+              <div
+                key={`${detectionId}-${index}`}
+                className={
+                  index === 0
+                    ? "log-row latest-row"
+                    : "log-row"
+                }
+                style={{
+                  display: "grid",
+                  gridTemplateColumns:
+                    "0.8fr 1.7fr 1.2fr 1.1fr 0.8fr 0.7fr",
+                  alignItems: "center",
+                  gap: "10px",
+                  minHeight: "52px",
+                  padding: "9px 12px",
+                  borderRadius: "10px",
+                  background:
+                    index === 0
+                      ? "#181818"
+                      : "#111111",
+                  border:
+                    index === 0
+                      ? "1px solid #303030"
+                      : "1px solid #242424",
+                }}
+              >
+
+                {/* DETECTION ID */}
 
                 <div
-                  key={`${detectionId}-${index}`}
-                  className={`log-row ${
-                    index === 0
-                      ? "latest-row"
-                      : ""
-                  }`}
                   style={{
-                    display: "grid",
-                    gap: "10px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "7px",
+                    minWidth: 0,
+                    fontSize: "12px",
+                    fontWeight: "600",
                   }}
                 >
 
-                  {/* ---------------------------------------
-                      DETECTION ID
-                  --------------------------------------- */}
-
-                  <div
+                  <FaFingerprint
                     style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      fontWeight: "600",
+                      flexShrink: 0,
+                      color: "#8f8f8f",
                     }}
-                  >
-
-                    <FaFingerprint />
-
-                    <span>
-                      {detectionId}
-                    </span>
-
-                    {index === 0 && (
-                      <span className="latest-badge">
-                        ● ANALYZED
-                      </span>
-                    )}
-
-                  </div>
-
-
-                  {/* ---------------------------------------
-                      FILE
-                  --------------------------------------- */}
-
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                    }}
-                    title="Analyzed dataset"
-                  >
-
-                    <FaFileCsv />
-
-                    <span
-                      style={{
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                      title={filename}
-                    >
-                      {filename}
-                    </span>
-
-                  </div>
-
-
-                  {/* ---------------------------------------
-                      TIMESTAMP
-                  --------------------------------------- */}
-
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                    }}
-                    title="Detection timestamp"
-                  >
-
-                    <FaClock />
-
-                    <span>
-                      {timestamp}
-                    </span>
-
-                  </div>
-
-
-                  {/* ---------------------------------------
-                      PREDICTION
-                  --------------------------------------- */}
-
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      fontWeight: "600",
-                    }}
-                  >
-
-                    <FaShieldAlt />
-
-                    <span>
-                      {prediction}
-                    </span>
-
-                  </div>
-
-
-                  {/* ---------------------------------------
-                      CONFIDENCE
-                  --------------------------------------- */}
-
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                    }}
-                  >
-
-                    <FaBullseye />
-
-                    <span>
-                      {safeConfidence.toFixed(2)}%
-                    </span>
-
-                  </div>
-
-
-                  {/* ---------------------------------------
-                      SEVERITY
-                  --------------------------------------- */}
+                  />
 
                   <span
                     style={{
-                      background:
-                        severity.color,
-                      color: "#000",
-                      padding: "6px 12px",
-                      borderRadius: "20px",
-                      fontWeight: "700",
-                      fontSize: "12px",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
                       whiteSpace: "nowrap",
-                      width: "fit-content",
                     }}
                   >
-                    {severity.label}
+                    {detectionId}
                   </span>
 
                 </div>
 
-              );
-            }
-          )}
 
-        </div>
+                {/* FILE */}
 
-      )}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "7px",
+                    minWidth: 0,
+                    fontSize: "12px",
+                    color: "#cfd3d8",
+                  }}
+                  title={filename}
+                >
+
+                  <FaFileCsv
+                    style={{
+                      flexShrink: 0,
+                      color: "#8f8f8f",
+                    }}
+                  />
+
+                  <span
+                    style={{
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {filename}
+                  </span>
+
+                </div>
+
+
+                {/* TIME */}
+
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "7px",
+                    minWidth: 0,
+                    fontSize: "11px",
+                    color: "#9ca3af",
+                  }}
+                  title={timestamp}
+                >
+
+                  <FaClock
+                    style={{
+                      flexShrink: 0,
+                    }}
+                  />
+
+                  <span
+                    style={{
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {timestamp}
+                  </span>
+
+                </div>
+
+
+                {/* PREDICTION */}
+
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "7px",
+                    minWidth: 0,
+                    fontSize: "12px",
+                    fontWeight: "600",
+                  }}
+                >
+
+                  <FaShieldAlt
+                    style={{
+                      flexShrink: 0,
+                      color:
+                        prediction === "Normal"
+                          ? "#22c55e"
+                          : "#ef4444",
+                    }}
+                  />
+
+                  <span
+                    style={{
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                    title={prediction}
+                  >
+                    {prediction}
+                  </span>
+
+                </div>
+
+
+                {/* CONFIDENCE */}
+
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "7px",
+                    fontSize: "12px",
+                    fontWeight: "600",
+                    color: "#d4d4d8",
+                  }}
+                >
+
+                  <FaBullseye
+                    style={{
+                      color: "#38bdf8",
+                      flexShrink: 0,
+                    }}
+                  />
+
+                  <span>
+                    {safeConfidence.toFixed(2)}%
+                  </span>
+
+                </div>
+
+
+                {/* SEVERITY */}
+
+                <div>
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      minWidth: "58px",
+                      padding: "5px 9px",
+                      borderRadius: "20px",
+                      background:
+                        severity.color,
+                      color: "#000000",
+                      fontWeight: "700",
+                      fontSize: "10px",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {severity.label}
+                  </span>
+                </div>
+
+              </div>
+            );
+          }
+        )}
+
+      </div>
 
     </div>
   );
