@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from "react";
 
 import {
   FaShieldAlt,
-  FaChartLine,
   FaBrain,
   FaProjectDiagram,
   FaClock,
@@ -34,20 +33,6 @@ function App() {
 
   const [data, setData] = useState(null);
   const [analysisHistory, setAnalysisHistory] = useState([]);
-  const [currentTime, setCurrentTime] = useState(new Date());
-
-
-  /* =========================================================
-     CLOCK
-  ========================================================= */
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, []);
 
 
   /* =========================================================
@@ -116,7 +101,13 @@ function App() {
     const confidence =
       Number(result.confidence) || 0;
 
-    const timestamp =
+    /*
+      Capture the exact time when this analysis completes.
+
+      This timestamp is stored inside the result and does NOT
+      update every second after the analysis is finished.
+    */
+    const analysisTimestamp =
       new Date().toLocaleTimeString("en-GB", {
         hour: "2-digit",
         minute: "2-digit",
@@ -138,6 +129,18 @@ function App() {
         ? "Medium"
         : "Low";
 
+    /*
+      Preserve the backend result while adding a fixed
+      detection timestamp for the current analysis.
+    */
+    const analysisResult = {
+      ...result,
+      detection_time:
+        result.detection_time ||
+        result.analysis_time ||
+        analysisTimestamp,
+    };
+
     const historyItem = {
       id: `DET-${String(
         analysisHistory.length + 1
@@ -149,14 +152,14 @@ function App() {
 
       filename,
 
-      timestamp,
+      timestamp: analysisResult.detection_time,
 
       threatLevel,
 
       status: "ANALYZED",
     };
 
-    setData(result);
+    setData(analysisResult);
 
     setAnalysisHistory((previous) => [
       ...previous,
@@ -250,18 +253,20 @@ function App() {
      DETECTION TIME
   ========================================================= */
 
+  /*
+    This value is now fixed for the current analysis.
+
+    It comes from:
+    1. Backend detection_time
+    2. Backend analysis_time
+    3. Timestamp captured when handlePrediction() completed
+
+    There is NO live clock updating this value.
+  */
   const detectionTime =
     data?.detection_time ||
     data?.analysis_time ||
-    currentTime.toLocaleTimeString(
-      "en-GB",
-      {
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: false,
-      }
-    );
+    "--:--:--";
 
 
   /* =========================================================
@@ -561,9 +566,7 @@ function App() {
                     lineHeight: "1.3",
                   }}
                 >
-                  Dataset-Level
-                  <br />
-                  Flow Analysis
+                  {analysisType}
                 </div>
 
               </div>
