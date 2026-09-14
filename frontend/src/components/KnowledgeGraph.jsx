@@ -2,17 +2,49 @@ import {
   FaProjectDiagram,
   FaCheckCircle,
   FaShieldAlt,
-  FaLink,
 } from "react-icons/fa";
 
 
-function KnowledgeGraph({ graph = [] }) {
+function KnowledgeGraph({
+  graph = [],
+  prediction = "Unknown",
+}) {
   const nodes = Array.isArray(graph)
     ? graph
         .filter(Boolean)
         .map((item) => String(item).trim())
         .filter(Boolean)
     : [];
+
+
+  /* =========================================================
+     GRAPH NODE POSITIONS
+  ========================================================= */
+
+  const getNodePosition = (index, total) => {
+    if (total === 1) {
+      return {
+        x: 50,
+        y: 50,
+      };
+    }
+
+    const angle =
+      (index / total) * Math.PI * 2 -
+      Math.PI / 2;
+
+    const radius = total <= 4 ? 34 : 38;
+
+    return {
+      x:
+        50 +
+        Math.cos(angle) * radius,
+
+      y:
+        50 +
+        Math.sin(angle) * radius,
+    };
+  };
 
 
   return (
@@ -54,12 +86,12 @@ function KnowledgeGraph({ graph = [] }) {
           />
 
           <div>
+
             <h3
               style={{
                 margin: 0,
                 fontSize: "24px",
                 fontWeight: "700",
-                letterSpacing: ".3px",
               }}
             >
               Knowledge Graph
@@ -72,8 +104,9 @@ function KnowledgeGraph({ graph = [] }) {
                 fontSize: "12px",
               }}
             >
-              Symbolic security context
+              Neuro-symbolic security relationships
             </div>
+
           </div>
 
         </div>
@@ -81,9 +114,6 @@ function KnowledgeGraph({ graph = [] }) {
 
         <div
           style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "7px",
             padding: "8px 15px",
             borderRadius: "20px",
             background: "#222222",
@@ -94,195 +124,303 @@ function KnowledgeGraph({ graph = [] }) {
             whiteSpace: "nowrap",
           }}
         >
-
-          <FaLink
-            style={{
-              fontSize: "12px",
-            }}
-          />
-
           {nodes.length}{" "}
           {nodes.length === 1 ? "Node" : "Nodes"}
-
         </div>
 
       </div>
 
 
       {/* =====================================================
-          DESCRIPTION
+          GRAPH DESCRIPTION
       ===================================================== */}
 
       <div
         style={{
-          padding: "20px 22px",
-          borderRadius: "13px",
+          padding: "17px 20px",
+          borderRadius: "12px",
           background: "#111111",
           border: "1px solid #303030",
           textAlign: "center",
+          color: "#cfd3d8",
+          fontSize: "14px",
+          lineHeight: "1.6",
         }}
       >
-
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "9px",
-            color: "#e5e7eb",
-            fontSize: "16px",
-            fontWeight: "700",
-          }}
-        >
-
-          <FaShieldAlt
-            style={{
-              color: "#38bdf8",
-            }}
-          />
-
-          Symbolic Security Context
-
-        </div>
-
-
-        <p
-          style={{
-            margin: "10px auto 0",
-            maxWidth: "950px",
-            color: "#cfd3d8",
-            fontSize: "14px",
-            lineHeight: "1.7",
-          }}
-        >
-          The knowledge graph represents security concepts and
-          behavioural evidence associated with the detected network
-          activity. These symbolic nodes complement the neural
-          network prediction.
-        </p>
-
+        The graph connects the final detection with symbolic
+        security concepts identified from the analysed network
+        behaviour.
       </div>
 
 
       {/* =====================================================
-          KNOWLEDGE NODES
+          GRAPH VISUALIZATION
       ===================================================== */}
 
       {nodes.length > 0 ? (
 
         <div
           style={{
-            display: "grid",
-            gridTemplateColumns:
-              "repeat(auto-fit, minmax(240px, 1fr))",
-            gap: "16px",
-            marginTop: "16px",
+            position: "relative",
+            width: "100%",
+            height: "470px",
+            marginTop: "20px",
+            borderRadius: "15px",
+            background:
+              "radial-gradient(circle at center, #171717 0%, #101010 55%, #0d0d0d 100%)",
+            border: "1px solid #303030",
+            overflow: "hidden",
           }}
         >
 
-          {nodes.map((node, index) => (
+          {/* =================================================
+              CONNECTION LINES
+          ================================================= */}
+
+          <svg
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+            style={{
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              pointerEvents: "none",
+            }}
+          >
+
+            {nodes.map((node, index) => {
+
+              const position =
+                getNodePosition(
+                  index,
+                  nodes.length
+                );
+
+              return (
+                <line
+                  key={`line-${index}`}
+                  x1="50"
+                  y1="50"
+                  x2={position.x}
+                  y2={position.y}
+                  stroke="#3a3a3a"
+                  strokeWidth="0.35"
+                  strokeDasharray="1.5 1"
+                />
+              );
+            })}
+
+          </svg>
+
+
+          {/* =================================================
+              CENTRAL DETECTION NODE
+          ================================================= */}
+
+          <div
+            style={{
+              position: "absolute",
+              left: "50%",
+              top: "50%",
+              transform:
+                "translate(-50%, -50%)",
+              width: "190px",
+              minHeight: "125px",
+              padding: "20px",
+              borderRadius: "18px",
+              background: "#181818",
+              border:
+                "2px solid #38bdf8",
+              boxShadow:
+                "0 0 30px rgba(56, 189, 248, 0.12)",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              textAlign: "center",
+              zIndex: 3,
+            }}
+          >
+
+            <FaShieldAlt
+              style={{
+                fontSize: "24px",
+                color: "#38bdf8",
+                marginBottom: "9px",
+              }}
+            />
 
             <div
-              key={`${node}-${index}`}
               style={{
-                minHeight: "88px",
-                padding: "20px",
-                borderRadius: "13px",
-                background: "#151515",
-                border: "1px solid #303030",
-                display: "flex",
-                alignItems: "center",
-                gap: "14px",
-                transition:
-                  "border-color .2s ease, transform .2s ease",
+                color: "#8f8f8f",
+                fontSize: "10px",
+                fontWeight: "700",
+                letterSpacing: "1px",
+                textTransform: "uppercase",
               }}
             >
-
-              {/* Node Icon */}
-
-              <div
-                style={{
-                  width: "42px",
-                  height: "42px",
-                  flexShrink: 0,
-                  borderRadius: "11px",
-                  background: "#222222",
-                  border: "1px solid #363636",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-
-                <FaCheckCircle
-                  style={{
-                    fontSize: "18px",
-                    color: "#22c55e",
-                  }}
-                />
-
-              </div>
-
-
-              {/* Node Information */}
-
-              <div
-                style={{
-                  minWidth: 0,
-                  flex: 1,
-                }}
-              >
-
-                <div
-                  style={{
-                    color: "#8f8f8f",
-                    fontSize: "10px",
-                    fontWeight: "700",
-                    letterSpacing: "1px",
-                    textTransform: "uppercase",
-                    marginBottom: "5px",
-                  }}
-                >
-                  Symbolic Node {index + 1}
-                </div>
-
-                <div
-                  style={{
-                    color: "#f1f5f9",
-                    fontSize: "16px",
-                    lineHeight: "1.35",
-                    fontWeight: "700",
-                    wordBreak: "break-word",
-                  }}
-                >
-                  {node}
-                </div>
-
-              </div>
-
+              Final Detection
             </div>
 
-          ))}
+            <div
+              style={{
+                marginTop: "6px",
+                color: "#f5f5f5",
+                fontSize: "21px",
+                fontWeight: "800",
+                lineHeight: "1.25",
+                wordBreak: "break-word",
+              }}
+            >
+              {prediction || "Unknown"}
+            </div>
+
+          </div>
+
+
+          {/* =================================================
+              SYMBOLIC NODES
+          ================================================= */}
+
+          {nodes.map((node, index) => {
+
+            const position =
+              getNodePosition(
+                index,
+                nodes.length
+              );
+
+            return (
+              <div
+                key={`${node}-${index}`}
+                style={{
+                  position: "absolute",
+                  left: `${position.x}%`,
+                  top: `${position.y}%`,
+                  transform:
+                    "translate(-50%, -50%)",
+                  width: "175px",
+                  minHeight: "82px",
+                  padding: "15px",
+                  borderRadius: "14px",
+                  background: "#151515",
+                  border:
+                    "1px solid #3a3a3a",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "11px",
+                  zIndex: 2,
+                  boxShadow:
+                    "0 8px 20px rgba(0,0,0,.25)",
+                }}
+              >
+
+                <div
+                  style={{
+                    width: "34px",
+                    height: "34px",
+                    flexShrink: 0,
+                    borderRadius: "9px",
+                    background: "#222222",
+                    border:
+                      "1px solid #363636",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+
+                  <FaCheckCircle
+                    style={{
+                      color: "#22c55e",
+                      fontSize: "16px",
+                    }}
+                  />
+
+                </div>
+
+
+                <div
+                  style={{
+                    minWidth: 0,
+                  }}
+                >
+
+                  <div
+                    style={{
+                      color: "#777777",
+                      fontSize: "9px",
+                      fontWeight: "700",
+                      letterSpacing: ".8px",
+                      textTransform: "uppercase",
+                      marginBottom: "4px",
+                    }}
+                  >
+                    Symbolic Node
+                  </div>
+
+                  <div
+                    style={{
+                      color: "#e5e7eb",
+                      fontSize: "14px",
+                      fontWeight: "700",
+                      lineHeight: "1.3",
+                      wordBreak: "break-word",
+                    }}
+                  >
+                    {node}
+                  </div>
+
+                </div>
+
+              </div>
+            );
+          })}
 
         </div>
 
       ) : (
 
+        /* =====================================================
+           EMPTY GRAPH
+        ===================================================== */
+
         <div
           style={{
-            marginTop: "16px",
-            padding: "24px",
-            borderRadius: "13px",
+            marginTop: "20px",
+            minHeight: "260px",
+            borderRadius: "15px",
             background: "#111111",
             border: "1px solid #303030",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
             textAlign: "center",
-            color: "#8f8f8f",
-            fontSize: "14px",
-            lineHeight: "1.6",
+            padding: "30px",
           }}
         >
-          No symbolic knowledge-graph nodes were generated
-          for this analysis.
+
+          <FaProjectDiagram
+            style={{
+              fontSize: "34px",
+              color: "#555555",
+              marginBottom: "12px",
+            }}
+          />
+
+          <div
+            style={{
+              color: "#9ca3af",
+              fontSize: "15px",
+              fontWeight: "600",
+            }}
+          >
+            No symbolic knowledge-graph nodes
+            were generated for this analysis.
+          </div>
+
         </div>
 
       )}
@@ -319,9 +457,8 @@ function KnowledgeGraph({ graph = [] }) {
             }}
           />
 
-          These symbolic nodes connect the detected network
-          behaviour with relevant security concepts and provide
-          additional context for the final classification.
+          The central detection is connected to symbolic
+          behavioural concepts identified during analysis.
 
         </div>
 
