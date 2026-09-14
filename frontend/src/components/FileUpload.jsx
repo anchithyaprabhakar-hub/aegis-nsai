@@ -232,7 +232,12 @@ function FileUpload({ onPrediction }) {
         return <FaExclamationTriangle />;
 
       case "Analyzing...":
-        return <FaSpinner className="spin" />;
+        return (
+          <FaSpinner
+            className="spin"
+            aria-hidden="true"
+          />
+        );
 
       default:
         return <FaUpload />;
@@ -340,6 +345,7 @@ function FileUpload({ onPrediction }) {
             <>
               <FaSpinner
                 className="spin"
+                aria-hidden="true"
                 style={{
                   marginRight: "8px",
                 }}
