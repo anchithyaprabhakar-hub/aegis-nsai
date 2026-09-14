@@ -7,6 +7,8 @@ import {
   FaProjectDiagram,
   FaClock,
   FaExclamationTriangle,
+  FaDatabase,
+  FaNetworkWired,
 } from "react-icons/fa";
 
 import Header from "./components/Header";
@@ -318,6 +320,10 @@ function App() {
       0
     ) || 0;
 
+  const analysisType =
+    data?.analysis_type ||
+    "Dataset-level network-flow analysis";
+
 
   /* =========================================================
      MAIN UI
@@ -441,39 +447,7 @@ function App() {
 
             <section className="summary-grid">
 
-              <div className="summary-card">
-
-                <div className="summary-card-header">
-                  <span>PREDICTION</span>
-                  <FaShieldAlt />
-                </div>
-
-                <div
-                  className={`summary-value ${
-                    isNormal
-                      ? "normal"
-                      : "danger"
-                  }`}
-                >
-                  {prediction}
-                </div>
-
-              </div>
-
-
-              <div className="summary-card">
-
-                <div className="summary-card-header">
-                  <span>CONFIDENCE</span>
-                  <FaChartLine />
-                </div>
-
-                <div className="summary-value">
-                  {confidence.toFixed(2)}%
-                </div>
-
-              </div>
-
+              {/* AI ENGINE */}
 
               <div className="summary-card ai-card">
 
@@ -490,6 +464,8 @@ function App() {
 
               </div>
 
+
+              {/* RISK SCORE */}
 
               <div className="summary-card">
 
@@ -511,6 +487,8 @@ function App() {
               </div>
 
 
+              {/* DETECTION TIME */}
+
               <div className="summary-card">
 
                 <div className="summary-card-header">
@@ -524,6 +502,8 @@ function App() {
 
               </div>
 
+
+              {/* THREAT LEVEL */}
 
               <div className="summary-card">
 
@@ -544,6 +524,46 @@ function App() {
                   }`}
                 >
                   {threatLevel}
+                </div>
+
+              </div>
+
+
+              {/* ROWS ANALYZED */}
+
+              <div className="summary-card">
+
+                <div className="summary-card-header">
+                  <span>ROWS ANALYZED</span>
+                  <FaDatabase />
+                </div>
+
+                <div className="summary-value time-value">
+                  {rowsProcessed.toLocaleString()}
+                </div>
+
+              </div>
+
+
+              {/* ANALYSIS TYPE */}
+
+              <div className="summary-card">
+
+                <div className="summary-card-header">
+                  <span>ANALYSIS TYPE</span>
+                  <FaNetworkWired />
+                </div>
+
+                <div
+                  className="summary-value"
+                  style={{
+                    fontSize: "20px",
+                    lineHeight: "1.3",
+                  }}
+                >
+                  Dataset-Level
+                  <br />
+                  Flow Analysis
                 </div>
 
               </div>
