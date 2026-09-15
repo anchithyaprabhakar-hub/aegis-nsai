@@ -254,7 +254,7 @@ function App() {
   ========================================================= */
 
   /*
-    This value is now fixed for the current analysis.
+    This value is fixed for the current analysis.
 
     It comes from:
     1. Backend detection_time
@@ -625,9 +625,8 @@ function App() {
             <section className="dashboard-section">
 
               <KnowledgeGraph
-                graph={
-                  knowledgeGraph
-                }
+                graph={knowledgeGraph}
+                prediction={prediction}
               />
 
             </section>
@@ -695,9 +694,7 @@ function App() {
             <section className="dashboard-section">
 
               <AttackAnalytics
-                logs={
-                  analysisHistory
-                }
+                logs={analysisHistory}
               />
 
             </section>
@@ -710,9 +707,7 @@ function App() {
             <section className="dashboard-section">
 
               <AttackChart
-                logs={
-                  analysisHistory
-                }
+                logs={analysisHistory}
               />
 
             </section>
@@ -725,9 +720,7 @@ function App() {
             <section className="dashboard-section">
 
               <ConfidenceChart
-                data={
-                  analysisHistory
-                }
+                data={analysisHistory}
               />
 
             </section>
@@ -740,9 +733,7 @@ function App() {
             <section className="dashboard-section">
 
               <RecentLogs
-                logs={
-                  analysisHistory
-                }
+                logs={analysisHistory}
               />
 
             </section>

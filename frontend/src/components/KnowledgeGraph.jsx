@@ -4,7 +4,6 @@ import {
   FaShieldAlt,
 } from "react-icons/fa";
 
-
 function KnowledgeGraph({
   graph = [],
   prediction = "Unknown",
@@ -15,11 +14,6 @@ function KnowledgeGraph({
         .map((item) => String(item).trim())
         .filter(Boolean)
     : [];
-
-
-  /* =========================================================
-     GRAPH NODE POSITIONS
-  ========================================================= */
 
   const getNodePosition = (index, total) => {
     if (total === 1) {
@@ -33,7 +27,8 @@ function KnowledgeGraph({
       (index / total) * Math.PI * 2 -
       Math.PI / 2;
 
-    const radius = total <= 4 ? 34 : 38;
+    const radius =
+      total <= 4 ? 34 : 38;
 
     return {
       x:
@@ -46,7 +41,6 @@ function KnowledgeGraph({
     };
   };
 
-
   return (
     <div
       className="info-card"
@@ -55,7 +49,6 @@ function KnowledgeGraph({
         padding: "30px",
       }}
     >
-
       {/* =====================================================
           HEADER
       ===================================================== */}
@@ -64,118 +57,60 @@ function KnowledgeGraph({
         style={{
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
-          gap: "18px",
-          marginBottom: "22px",
+          gap: "12px",
         }}
       >
-
-        <div
+        <FaProjectDiagram
           style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
+            color: "#38bdf8",
+            fontSize: "24px",
           }}
-        >
+        />
 
-          <FaProjectDiagram
+        <div>
+          <h3
             style={{
-              fontSize: "25px",
-              color: "#f5f5f5",
+              margin: 0,
+              fontSize: "24px",
+              fontWeight: "700",
             }}
-          />
+          >
+            Knowledge Graph
+          </h3>
 
-          <div>
-
-            <h3
-              style={{
-                margin: 0,
-                fontSize: "24px",
-                fontWeight: "700",
-              }}
-            >
-              Knowledge Graph
-            </h3>
-
-            <div
-              style={{
-                marginTop: "4px",
-                color: "#8f8f8f",
-                fontSize: "12px",
-              }}
-            >
-              Neuro-symbolic security relationships
-            </div>
-
-          </div>
-
+          <p
+            style={{
+              margin: "7px 0 0",
+              color: "#8f8f98",
+              fontSize: "14px",
+            }}
+          >
+            Security concepts associated with the
+            detected network behaviour.
+          </p>
         </div>
-
-
-        <div
-          style={{
-            padding: "8px 15px",
-            borderRadius: "20px",
-            background: "#222222",
-            border: "1px solid #303030",
-            color: "#e5e7eb",
-            fontSize: "13px",
-            fontWeight: "700",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {nodes.length}{" "}
-          {nodes.length === 1 ? "Node" : "Nodes"}
-        </div>
-
       </div>
 
-
       {/* =====================================================
-          GRAPH DESCRIPTION
-      ===================================================== */}
-
-      <div
-        style={{
-          padding: "17px 20px",
-          borderRadius: "12px",
-          background: "#111111",
-          border: "1px solid #303030",
-          textAlign: "center",
-          color: "#cfd3d8",
-          fontSize: "14px",
-          lineHeight: "1.6",
-        }}
-      >
-        The graph connects the final detection with symbolic
-        security concepts identified from the analysed network
-        behaviour.
-      </div>
-
-
-      {/* =====================================================
-          GRAPH VISUALIZATION
+          GRAPH
       ===================================================== */}
 
       {nodes.length > 0 ? (
-
         <div
           style={{
             position: "relative",
             width: "100%",
             height: "470px",
-            marginTop: "20px",
-            borderRadius: "15px",
-            background:
-              "radial-gradient(circle at center, #171717 0%, #101010 55%, #0d0d0d 100%)",
-            border: "1px solid #303030",
+            marginTop: "24px",
             overflow: "hidden",
+            borderRadius: "14px",
+            background:
+              "radial-gradient(circle at center, #161616 0%, #101010 55%, #0d0d0d 100%)",
+            border:
+              "1px solid rgba(255,255,255,0.08)",
           }}
         >
-
-          {/* =================================================
-              CONNECTION LINES
-          ================================================= */}
+          {/* SVG CONNECTIONS */}
 
           <svg
             viewBox="0 0 100 100"
@@ -188,9 +123,7 @@ function KnowledgeGraph({
               pointerEvents: "none",
             }}
           >
-
             {nodes.map((node, index) => {
-
               const position =
                 getNodePosition(
                   index,
@@ -204,15 +137,13 @@ function KnowledgeGraph({
                   y1="50"
                   x2={position.x}
                   y2={position.y}
-                  stroke="#3a3a3a"
+                  stroke="#38bdf8"
                   strokeWidth="0.35"
-                  strokeDasharray="1.5 1"
+                  strokeOpacity="0.55"
                 />
               );
             })}
-
           </svg>
-
 
           {/* =================================================
               CENTRAL DETECTION NODE
@@ -225,66 +156,71 @@ function KnowledgeGraph({
               top: "50%",
               transform:
                 "translate(-50%, -50%)",
+
               width: "190px",
-              minHeight: "125px",
-              padding: "20px",
-              borderRadius: "18px",
-              background: "#181818",
-              border:
-                "2px solid #38bdf8",
-              boxShadow:
-                "0 0 30px rgba(56, 189, 248, 0.12)",
+              minHeight: "115px",
+
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
+
+              padding: "18px",
+
+              borderRadius: "16px",
+
+              background:
+                "linear-gradient(145deg, #181818, #111111)",
+
+              border:
+                "2px solid #38bdf8",
+
+              boxShadow:
+                "0 0 30px rgba(56,189,248,0.16)",
+
               textAlign: "center",
-              zIndex: 3,
+
+              zIndex: 5,
             }}
           >
-
             <FaShieldAlt
               style={{
-                fontSize: "24px",
                 color: "#38bdf8",
+                fontSize: "23px",
                 marginBottom: "9px",
               }}
             />
 
-            <div
+            <span
               style={{
-                color: "#8f8f8f",
+                color: "#8f8f98",
                 fontSize: "10px",
                 fontWeight: "700",
-                letterSpacing: "1px",
                 textTransform: "uppercase",
+                letterSpacing: "1px",
               }}
             >
-              Final Detection
-            </div>
+              Detected Activity
+            </span>
 
-            <div
+            <strong
               style={{
-                marginTop: "6px",
+                marginTop: "5px",
                 color: "#f5f5f5",
-                fontSize: "21px",
-                fontWeight: "800",
-                lineHeight: "1.25",
+                fontSize: "18px",
+                lineHeight: "1.2",
                 wordBreak: "break-word",
               }}
             >
-              {prediction || "Unknown"}
-            </div>
-
+              {String(prediction || "Unknown")}
+            </strong>
           </div>
 
-
           {/* =================================================
-              SYMBOLIC NODES
+              KNOWLEDGE NODES
           ================================================= */}
 
           {nodes.map((node, index) => {
-
             const position =
               getNodePosition(
                 index,
@@ -293,180 +229,164 @@ function KnowledgeGraph({
 
             return (
               <div
-                key={`${node}-${index}`}
+                key={`node-${index}`}
                 style={{
                   position: "absolute",
+
                   left: `${position.x}%`,
                   top: `${position.y}%`,
+
                   transform:
                     "translate(-50%, -50%)",
-                  width: "175px",
-                  minHeight: "82px",
-                  padding: "15px",
-                  borderRadius: "14px",
-                  background: "#151515",
-                  border:
-                    "1px solid #3a3a3a",
+
+                  width:
+                    nodes.length <= 3
+                      ? "180px"
+                      : "155px",
+
+                  minHeight: "76px",
+
                   display: "flex",
+                  flexDirection: "column",
                   alignItems: "center",
-                  gap: "11px",
-                  zIndex: 2,
+                  justifyContent: "center",
+
+                  padding: "12px 15px",
+
+                  background: "#171717",
+
+                  border:
+                    "1px solid rgba(255,255,255,0.14)",
+
+                  borderRadius: "14px",
+
                   boxShadow:
-                    "0 8px 20px rgba(0,0,0,.25)",
+                    "0 8px 24px rgba(0,0,0,0.3)",
+
+                  textAlign: "center",
+
+                  zIndex: 4,
                 }}
               >
-
-                <div
+                <FaCheckCircle
                   style={{
-                    width: "34px",
-                    height: "34px",
-                    flexShrink: 0,
-                    borderRadius: "9px",
-                    background: "#222222",
-                    border:
-                      "1px solid #363636",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
+                    color: "#22c55e",
+                    fontSize: "18px",
+                    marginBottom: "8px",
+                  }}
+                />
+
+                <span
+                  style={{
+                    color: "#e5e7eb",
+                    fontSize: "14px",
+                    fontWeight: "700",
+                    lineHeight: "1.35",
                   }}
                 >
+                  {node}
+                </span>
 
-                  <FaCheckCircle
-                    style={{
-                      color: "#22c55e",
-                      fontSize: "16px",
-                    }}
-                  />
-
-                </div>
-
-
-                <div
+                <span
                   style={{
-                    minWidth: 0,
+                    marginTop: "4px",
+                    color: "#737373",
+                    fontSize: "10px",
                   }}
                 >
-
-                  <div
-                    style={{
-                      color: "#777777",
-                      fontSize: "9px",
-                      fontWeight: "700",
-                      letterSpacing: ".8px",
-                      textTransform: "uppercase",
-                      marginBottom: "4px",
-                    }}
-                  >
-                    Symbolic Node
-                  </div>
-
-                  <div
-                    style={{
-                      color: "#e5e7eb",
-                      fontSize: "14px",
-                      fontWeight: "700",
-                      lineHeight: "1.3",
-                      wordBreak: "break-word",
-                    }}
-                  >
-                    {node}
-                  </div>
-
-                </div>
-
+                  Security context
+                </span>
               </div>
             );
           })}
-
         </div>
-
       ) : (
-
         /* =====================================================
-           EMPTY GRAPH
+           EMPTY STATE
         ===================================================== */
 
         <div
           style={{
-            marginTop: "20px",
-            minHeight: "260px",
-            borderRadius: "15px",
-            background: "#111111",
-            border: "1px solid #303030",
+            minHeight: "250px",
+            marginTop: "24px",
+
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
+
+            borderRadius: "14px",
+
+            background: "#101010",
+
+            border:
+              "1px solid rgba(255,255,255,0.08)",
+
             textAlign: "center",
-            padding: "30px",
           }}
         >
-
           <FaProjectDiagram
             style={{
-              fontSize: "34px",
-              color: "#555555",
-              marginBottom: "12px",
+              color: "#525252",
+              fontSize: "38px",
+              marginBottom: "14px",
             }}
           />
 
-          <div
+          <strong
             style={{
-              color: "#9ca3af",
-              fontSize: "15px",
-              fontWeight: "600",
+              color: "#a3a3a3",
+              fontSize: "16px",
             }}
           >
-            No symbolic knowledge-graph nodes
-            were generated for this analysis.
-          </div>
+            No Knowledge Graph Context
+          </strong>
 
+          <p
+            style={{
+              marginTop: "7px",
+              color: "#666666",
+              fontSize: "13px",
+            }}
+          >
+            No symbolic security concepts were
+            returned for this analysis.
+          </p>
         </div>
-
       )}
-
 
       {/* =====================================================
           FOOTER
       ===================================================== */}
 
       {nodes.length > 0 && (
-
         <div
           style={{
-            marginTop: "18px",
-            padding: "15px 18px",
-            borderRadius: "11px",
-            background: "#111111",
-            border: "1px solid #292929",
             display: "flex",
             alignItems: "center",
-            justifyContent: "center",
             gap: "9px",
-            color: "#9ca3af",
+
+            marginTop: "16px",
+
+            color: "#737373",
             fontSize: "12px",
-            lineHeight: "1.55",
-            textAlign: "center",
           }}
         >
-
           <FaProjectDiagram
             style={{
-              color: "#facc15",
-              flexShrink: 0,
+              color: "#38bdf8",
             }}
           />
 
-          The central detection is connected to symbolic
-          behavioural concepts identified during analysis.
-
+          <span>
+            The central node represents the final
+            detection and surrounding nodes represent
+            associated security concepts.
+          </span>
         </div>
-
       )}
-
     </div>
   );
 }
-
 
 export default KnowledgeGraph;
