@@ -1,317 +1,318 @@
 import {
-  FaChartPie,
-  FaShieldAlt,
+  FaChartLine,
   FaExclamationTriangle,
-  FaBullseye,
+  FaShieldAlt,
   FaCheckCircle,
-  FaBug,
+  FaPercentage,
+  FaClock,
 } from "react-icons/fa";
 
+function AttackAnalytics({ logs = [], analysisHistory = [] }) {
+  const history =
+    Array.isArray(logs) && logs.length > 0
+      ? logs
+      : Array.isArray(analysisHistory)
+      ? analysisHistory
+      : [];
 
-function AttackAnalytics({ logs = [] }) {
-  /* =========================================================
-     NORMALIZE LOGS
-  ========================================================= */
+  const totalAnalyses = history.length;
 
-  const normalizedLogs = Array.isArray(logs)
-    ? logs
-    : [];
+  const maliciousDetections = history.filter(
+    (item) => {
+      const prediction = String(
+        item?.prediction || ""
+      )
+        .trim()
+        .toLowerCase();
 
-  const total = normalizedLogs.length;
+      return (
+        prediction !== "" &&
+        prediction !== "normal" &&
+        prediction !== "benign"
+      );
+    }
+  ).length;
 
+  const normalDetections = history.filter(
+    (item) => {
+      const prediction = String(
+        item?.prediction || ""
+      )
+        .trim()
+        .toLowerCase();
 
-  /* =========================================================
-     NORMAL / MALICIOUS DETECTIONS
-  ========================================================= */
+      return (
+        prediction === "normal" ||
+        prediction === "benign"
+      );
+    }
+  ).length;
 
-  const isNormalPrediction = (prediction) => {
-    const value = String(prediction || "")
-      .trim()
-      .toLowerCase();
+  const highRiskDetections = history.filter(
+    (item) => {
+      const prediction = String(
+        item?.prediction || ""
+      )
+        .trim()
+        .toLowerCase();
 
-    return (
-      value === "normal" ||
-      value === "benign"
-    );
-  };
+      const confidence =
+        Number(item?.confidence) || 0;
 
-
-  const maliciousAnalyses =
-    normalizedLogs.filter(
-      (log) =>
-        !isNormalPrediction(log?.prediction)
-    ).length;
-
-
-  const normalAnalyses =
-    normalizedLogs.filter(
-      (log) =>
-        isNormalPrediction(log?.prediction)
-    ).length;
-
-
-  /* =========================================================
-     HIGH-RISK DETECTIONS
-  ========================================================= */
-
-  const highRisk =
-    normalizedLogs.filter((log) => {
-      const prediction =
-        String(log?.prediction || "")
-          .trim()
-          .toLowerCase();
-
-      const isBenign =
+      const isNormal =
         prediction === "normal" ||
         prediction === "benign";
 
       return (
-        !isBenign &&
-        Number(log?.confidence) >= 70
+        !isNormal &&
+        confidence >= 80
       );
-    }).length;
-
-
-  /* =========================================================
-     AVERAGE CONFIDENCE
-  ========================================================= */
+    }
+  ).length;
 
   const averageConfidence =
-    total === 0
-      ? "0.00"
-      : (
-          normalizedLogs.reduce(
-            (sum, log) =>
-              sum +
-              (Number(log?.confidence) || 0),
-            0
-          ) / total
-        ).toFixed(2);
-
-
-  /* =========================================================
-     MALICIOUS DETECTION RATE
-  ========================================================= */
+    totalAnalyses > 0
+      ? history.reduce(
+          (sum, item) =>
+            sum +
+            (Number(item?.confidence) || 0),
+          0
+        ) / totalAnalyses
+      : 0;
 
   const maliciousRate =
-    total === 0
-      ? "0.0"
-      : (
-          (maliciousAnalyses / total) * 100
-        ).toFixed(1);
+    totalAnalyses > 0
+      ? (maliciousDetections /
+          totalAnalyses) *
+        100
+      : 0;
 
+  const latestDetection =
+    history.length > 0
+      ? history[history.length - 1]
+      : null;
 
-  /* =========================================================
-     LATEST ANALYSIS
-  ========================================================= */
-
-  const latestAnalysis =
-    total > 0
-      ? normalizedLogs[total - 1]?.prediction ||
-        "Unknown"
-      : "None";
-
+  const latestPrediction =
+    latestDetection?.prediction || "--";
 
   const latestConfidence =
-    total > 0
-      ? Number(
-          normalizedLogs[total - 1]?.confidence || 0
-        ).toFixed(2)
-      : "0.00";
+    Number(
+      latestDetection?.confidence
+    ) || 0;
 
+  const getLatestTime = () => {
+    if (!latestDetection) {
+      return "--:--:--";
+    }
 
-  /* =========================================================
-     METRIC CARD
-  ========================================================= */
+    return (
+      latestDetection.timestamp ||
+      latestDetection.detection_time ||
+      latestDetection.detectionTime ||
+      latestDetection.analysis_time ||
+      "--:--:--"
+    );
+  };
 
-  const MetricCard = ({
-    icon,
-    label,
-    value,
-    iconColor = "#38bdf8",
-    valueColor = "#f5f5f5",
-  }) => (
-    <div
-      style={{
-        minHeight: "88px",
-        padding: "14px 16px",
-        borderRadius: "11px",
-        background: "#111111",
-        border: "1px solid #2c2c2c",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-          color: "#cfd3d8",
-          fontSize: "13px",
-          fontWeight: "600",
-        }}
-      >
-        <span
-          style={{
-            color: iconColor,
-            display: "flex",
-            alignItems: "center",
-          }}
-        >
-          {icon}
-        </span>
-
-        {label}
-      </div>
-
-      <div
-        style={{
-          marginTop: "7px",
-          fontSize: "23px",
-          lineHeight: "1.1",
-          fontWeight: "700",
-          color: valueColor,
-        }}
-      >
-        {value}
-      </div>
-    </div>
-  );
-
-
-  /* =========================================================
-     RENDER
-  ========================================================= */
+  const metrics = [
+    {
+      label: "TOTAL ANALYSES",
+      value: totalAnalyses.toLocaleString(),
+      icon: FaChartLine,
+      className: "analytics-blue",
+    },
+    {
+      label: "HIGH RISK",
+      value: highRiskDetections.toLocaleString(),
+      icon: FaExclamationTriangle,
+      className: "analytics-red",
+    },
+    {
+      label: "MALICIOUS",
+      value: maliciousDetections.toLocaleString(),
+      icon: FaShieldAlt,
+      className: "analytics-orange",
+    },
+    {
+      label: "NORMAL",
+      value: normalDetections.toLocaleString(),
+      icon: FaCheckCircle,
+      className: "analytics-green",
+    },
+    {
+      label: "AVG CONFIDENCE",
+      value: `${averageConfidence.toFixed(2)}%`,
+      icon: FaPercentage,
+      className: "analytics-purple",
+    },
+    {
+      label: "MALICIOUS RATE",
+      value: `${maliciousRate.toFixed(2)}%`,
+      icon: FaShieldAlt,
+      className: "analytics-orange",
+    },
+    {
+      label: "LATEST DETECTION",
+      value: latestPrediction,
+      icon: FaClock,
+      className: "analytics-cyan",
+    },
+    {
+      label: "LATEST CONFIDENCE",
+      value:
+        latestDetection
+          ? `${latestConfidence.toFixed(2)}%`
+          : "--",
+      icon: FaPercentage,
+      className: "analytics-purple",
+    },
+  ];
 
   return (
-    <div className="info-card">
+    <div className="info-card analytics-card">
 
-      {/* HEADER */}
+      {/* =====================================================
+          HEADER
+      ===================================================== */}
 
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: "10px",
-          marginBottom: "14px",
-        }}
-      >
-        <FaChartPie
-          style={{
-            fontSize: "20px",
-          }}
-        />
+      <div className="analytics-header">
 
-        <h3
-          style={{
-            margin: 0,
-            fontSize: "22px",
-            fontWeight: "700",
-          }}
-        >
-          Attack Analytics
-        </h3>
-      </div>
+        <div className="analytics-heading">
 
+          <div className="analytics-heading-icon">
+            <FaChartLine />
+          </div>
 
-      {/* METRIC GRID */}
+          <div>
+            <h3>
+              Attack Analytics
+            </h3>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns:
-            "repeat(4, minmax(0, 1fr))",
-          gap: "10px",
-        }}
-      >
+            <p>
+              Security analysis statistics from
+              the current detection history.
+            </p>
+          </div>
 
-        <MetricCard
-          icon={<FaShieldAlt />}
-          label="Total Analyses"
-          value={total}
-          iconColor="#38bdf8"
-        />
+        </div>
 
-
-        <MetricCard
-          icon={<FaExclamationTriangle />}
-          label="High Risk"
-          value={highRisk}
-          iconColor="#ef4444"
-          valueColor={
-            highRisk > 0
-              ? "#ef4444"
-              : "#22c55e"
-          }
-        />
-
-
-        <MetricCard
-          icon={<FaBug />}
-          label="Malicious Detections"
-          value={maliciousAnalyses}
-          iconColor="#f97316"
-          valueColor={
-            maliciousAnalyses > 0
-              ? "#f97316"
-              : "#22c55e"
-          }
-        />
-
-
-        <MetricCard
-          icon={<FaCheckCircle />}
-          label="Normal Detections"
-          value={normalAnalyses}
-          iconColor="#22c55e"
-          valueColor="#22c55e"
-        />
-
-
-        <MetricCard
-          icon={<FaBullseye />}
-          label="Average Confidence"
-          value={`${averageConfidence}%`}
-          iconColor="#facc15"
-        />
-
-
-        <MetricCard
-          icon={<FaChartPie />}
-          label="Malicious Rate"
-          value={`${maliciousRate}%`}
-          iconColor="#38bdf8"
-        />
-
-
-        <MetricCard
-          icon={<FaShieldAlt />}
-          label="Latest Detection"
-          value={latestAnalysis}
-          iconColor="#a855f7"
-          valueColor={
-            isNormalPrediction(latestAnalysis)
-              ? "#22c55e"
-              : "#ef4444"
-          }
-        />
-
-
-        <MetricCard
-          icon={<FaBullseye />}
-          label="Latest Confidence"
-          value={`${latestConfidence}%`}
-          iconColor="#38bdf8"
-        />
+        <div className="analytics-count">
+          {totalAnalyses}{" "}
+          {totalAnalyses === 1
+            ? "Analysis"
+            : "Analyses"}
+        </div>
 
       </div>
+
+
+      {/* =====================================================
+          METRICS
+      ===================================================== */}
+
+      {totalAnalyses > 0 ? (
+        <div className="analytics-grid">
+
+          {metrics.map(
+            ({
+              label,
+              value,
+              icon: Icon,
+              className,
+            }) => (
+              <div
+                className={`analytics-metric ${className}`}
+                key={label}
+              >
+
+                <div className="analytics-metric-top">
+
+                  <span>
+                    {label}
+                  </span>
+
+                  <Icon />
+
+                </div>
+
+                <div className="analytics-metric-value">
+                  {value}
+                </div>
+
+              </div>
+            )
+          )}
+
+        </div>
+      ) : (
+        <div className="analytics-empty">
+
+          <FaChartLine />
+
+          <strong>
+            No Analysis History
+          </strong>
+
+          <p>
+            Upload a network-flow CSV to begin
+            building security analytics.
+          </p>
+
+        </div>
+      )}
+
+
+      {/* =====================================================
+          LATEST ANALYSIS SUMMARY
+      ===================================================== */}
+
+      {latestDetection && (
+        <div className="analytics-latest">
+
+          <div className="analytics-latest-title">
+            <FaClock />
+            Latest Detection
+          </div>
+
+          <div className="analytics-latest-content">
+
+            <div>
+              <span className="analytics-label">
+                Classification
+              </span>
+
+              <strong>
+                {latestPrediction}
+              </strong>
+            </div>
+
+            <div>
+              <span className="analytics-label">
+                Confidence
+              </span>
+
+              <strong>
+                {latestConfidence.toFixed(2)}%
+              </strong>
+            </div>
+
+            <div>
+              <span className="analytics-label">
+                Detection Time
+              </span>
+
+              <strong>
+                {getLatestTime()}
+              </strong>
+            </div>
+
+          </div>
+
+        </div>
+      )}
 
     </div>
   );
 }
-
 
 export default AttackAnalytics;
