@@ -19,9 +19,9 @@ function FileUpload({ onPrediction }) {
 
   const API_URL = "http://127.0.0.1:8000/predict";
 
-  // ============================
-  // FILE SELECTION
-  // ============================
+  /* =========================================================
+     FILE SELECTION
+     ========================================================= */
 
   const handleFileChange = (event) => {
     const selectedFile = event.target.files?.[0];
@@ -58,9 +58,9 @@ function FileUpload({ onPrediction }) {
     });
   };
 
-  // ============================
-  // RESET
-  // ============================
+  /* =========================================================
+     RESET
+     ========================================================= */
 
   const handleReset = () => {
     if (loading) {
@@ -76,9 +76,9 @@ function FileUpload({ onPrediction }) {
     }
   };
 
-  // ============================
-  // UPLOAD / ANALYZE
-  // ============================
+  /* =========================================================
+     UPLOAD / ANALYZE
+     ========================================================= */
 
   const handleUpload = async () => {
     if (!file) {
@@ -120,9 +120,9 @@ function FileUpload({ onPrediction }) {
         result = {};
       }
 
-      // ============================
-      // HTTP ERROR
-      // ============================
+      /* =====================================================
+         HTTP ERROR
+         ===================================================== */
 
       if (!response.ok) {
         const backendMessage =
@@ -137,9 +137,9 @@ function FileUpload({ onPrediction }) {
         throw new Error(backendMessage);
       }
 
-      // ============================
-      // VALIDATE RESPONSE
-      // ============================
+      /* =====================================================
+         VALIDATE RESPONSE
+         ===================================================== */
 
       console.log("=================================");
       console.log("AEGIS-NSAI BACKEND RESULT");
@@ -157,9 +157,9 @@ function FileUpload({ onPrediction }) {
         );
       }
 
-      // ============================
-      // SEND RESULT TO APP
-      // ============================
+      /* =====================================================
+         SEND RESULT TO APP
+         ===================================================== */
 
       onPrediction(result);
 
@@ -196,9 +196,9 @@ function FileUpload({ onPrediction }) {
     }
   };
 
-  // ============================
-  // STATUS COLOR
-  // ============================
+  /* =========================================================
+     STATUS COLOR
+     ========================================================= */
 
   const getStatusColor = () => {
     switch (status) {
@@ -219,9 +219,9 @@ function FileUpload({ onPrediction }) {
     }
   };
 
-  // ============================
-  // STATUS ICON
-  // ============================
+  /* =========================================================
+     STATUS ICON
+     ========================================================= */
 
   const getStatusIcon = () => {
     switch (status) {
@@ -244,9 +244,9 @@ function FileUpload({ onPrediction }) {
     }
   };
 
-  // ============================
-  // FORMAT FILE SIZE
-  // ============================
+  /* =========================================================
+     FILE SIZE
+     ========================================================= */
 
   const formatFileSize = (bytes) => {
     if (bytes < 1024) {
@@ -265,17 +265,32 @@ function FileUpload({ onPrediction }) {
   };
 
   return (
-    <div
-      className="info-card"
-      style={{
-        textAlign: "center",
-      }}
-    >
-      <h3>Upload Network Traffic CSV</h3>
+    <section className="file-upload-card">
 
-      {/* ============================
-          FILE INPUT
-      ============================ */}
+      {/* =====================================================
+          TITLE
+          ===================================================== */}
+
+      <div className="file-upload-header">
+
+        <div className="file-upload-icon">
+          <FaUpload />
+        </div>
+
+        <div>
+          <h2>Upload Network Traffic CSV</h2>
+
+          <p>
+            Upload a CIC-IDS2017-compatible CSV file
+            for neuro-symbolic analysis.
+          </p>
+        </div>
+
+      </div>
+
+      {/* =====================================================
+          HIDDEN FILE INPUT
+          ===================================================== */}
 
       <input
         ref={inputRef}
@@ -284,76 +299,48 @@ function FileUpload({ onPrediction }) {
         accept=".csv,text/csv"
         onChange={handleFileChange}
         disabled={loading}
-        style={{
-          display: "none",
-        }}
+        className="hidden-file-input"
       />
 
-      {/* ============================
-          BUTTONS
-      ============================ */}
+      {/* =====================================================
+          ACTION BUTTONS
+          ===================================================== */}
 
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          gap: "18px",
-          marginTop: "25px",
-          flexWrap: "wrap",
-        }}
-      >
+      <div className="file-upload-actions">
+
         <label
           htmlFor="csv-upload"
-          style={{
-            padding: "12px 24px",
-            background: "#ffffff",
-            color: "#000000",
-            borderRadius: "10px",
-            cursor: loading
-              ? "not-allowed"
-              : "pointer",
-            fontWeight: "600",
-            opacity: loading ? 0.6 : 1,
-          }}
+          className={`choose-file-button ${
+            loading ? "button-disabled" : ""
+          }`}
         >
-          Choose File
+          <FaFileCsv />
+          <span>Choose File</span>
         </label>
 
         <button
           type="button"
           onClick={handleUpload}
           disabled={loading || !file}
-          style={{
-            padding: "12px 24px",
-            border: "none",
-            borderRadius: "10px",
-            background: "#ffffff",
-            color: "#000000",
-            fontWeight: "600",
-            cursor:
-              loading || !file
-                ? "not-allowed"
-                : "pointer",
-            opacity:
-              loading || !file
-                ? 0.6
-                : 1,
-          }}
+          className={`analyze-file-button ${
+            loading || !file
+              ? "button-disabled"
+              : ""
+          }`}
         >
           {loading ? (
             <>
               <FaSpinner
                 className="spin"
                 aria-hidden="true"
-                style={{
-                  marginRight: "8px",
-                }}
               />
-              Analyzing...
+              <span>Analyzing...</span>
             </>
           ) : (
-            "Analyze CSV"
+            <>
+              <FaUpload />
+              <span>Analyze CSV</span>
+            </>
           )}
         </button>
 
@@ -361,134 +348,77 @@ function FileUpload({ onPrediction }) {
           type="button"
           onClick={handleReset}
           disabled={loading}
-          style={{
-            width: "64px",
-            height: "48px",
-            border: "1px solid #444",
-            borderRadius: "10px",
-            background: "#1c1c1c",
-            color: "#ffffff",
-            cursor: loading
-              ? "not-allowed"
-              : "pointer",
-            opacity: loading ? 0.6 : 1,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
+          className={`reset-file-button ${
+            loading ? "button-disabled" : ""
+          }`}
+          aria-label="Clear selected file"
+          title="Clear selected file"
         >
           <FaTrash />
         </button>
+
       </div>
 
-      {/* ============================
-          ERROR MESSAGE
-      ============================ */}
-
-      {errorMessage && (
-        <div
-          role="alert"
-          style={{
-            marginTop: "22px",
-            padding: "14px 18px",
-            borderRadius: "10px",
-            border: "1px solid rgba(239, 68, 68, 0.45)",
-            background: "rgba(239, 68, 68, 0.08)",
-            color: "#fca5a5",
-            display: "flex",
-            alignItems: "flex-start",
-            justifyContent: "center",
-            gap: "10px",
-            textAlign: "left",
-            lineHeight: "1.5",
-          }}
-        >
-          <FaExclamationTriangle
-            style={{
-              marginTop: "3px",
-              flexShrink: 0,
-            }}
-          />
-
-          <span>{errorMessage}</span>
-        </div>
-      )}
-
-      {/* ============================
-          FILE INFORMATION
-      ============================ */}
+      {/* =====================================================
+          SELECTED FILE
+          ===================================================== */}
 
       {file && (
-        <div
-          style={{
-            marginTop: "30px",
-            background: "#111111",
-            border: "1px solid #2c2c2c",
-            borderRadius: "14px",
-            padding: "18px",
-          }}
-        >
-          {/* File name */}
+        <div className="selected-file-panel">
 
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "10px",
-              color: "#38bdf8",
-              fontSize: "18px",
-              wordBreak: "break-word",
-            }}
-          >
-            <FaFileCsv />
+          <div className="selected-file-main">
 
-            <strong>{file.name}</strong>
+            <div className="selected-file-icon">
+              <FaFileCsv />
+            </div>
+
+            <div className="selected-file-details">
+
+              <strong>
+                {file.name}
+              </strong>
+
+              <span>
+                {formatFileSize(file.size)}
+                {" · "}
+                {file.type || "text/csv"}
+              </span>
+
+            </div>
+
           </div>
 
-          {/* File size */}
-
-          <p
-            style={{
-              marginTop: "12px",
-              color: "#9ca3af",
-            }}
-          >
-            Size: {formatFileSize(file.size)}
-          </p>
-
-          {/* File type */}
-
-          <p
-            style={{
-              color: "#9ca3af",
-            }}
-          >
-            Type: {file.type || "text/csv"}
-          </p>
-
-          {/* Status */}
-
           <div
+            className="upload-status"
             style={{
-              marginTop: "18px",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "8px",
-              padding: "8px 16px",
-              borderRadius: "20px",
-              background: "#222222",
               color: getStatusColor(),
-              fontWeight: "700",
             }}
           >
             {getStatusIcon()}
-
-            {status}
+            <span>{status}</span>
           </div>
+
         </div>
       )}
-    </div>
+
+      {/* =====================================================
+          ERROR
+          ===================================================== */}
+
+      {errorMessage && (
+        <div
+          className="upload-error"
+          role="alert"
+        >
+          <FaExclamationTriangle />
+
+          <span>
+            {errorMessage}
+          </span>
+        </div>
+      )}
+
+    </section>
   );
 }
 
