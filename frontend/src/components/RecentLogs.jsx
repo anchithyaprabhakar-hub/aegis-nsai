@@ -55,17 +55,39 @@ function RecentLogs({ logs = [] }) {
   return (
     <div className="info-card recent-logs-card">
 
-      {/* HEADER */}
+      <div
+        className="recent-logs-header"
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          textAlign: "center",
+        }}
+      >
 
-      <div className="recent-logs-header">
-
-        <div className="recent-logs-heading">
+        <div
+          className="recent-logs-heading"
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            textAlign: "center",
+            width: "100%",
+          }}
+        >
 
           <div className="recent-logs-icon">
             <FaHistory />
           </div>
 
-          <div>
+          <div
+            style={{
+              width: "100%",
+              textAlign: "center",
+            }}
+          >
             <h3>
               Recent Detections
             </h3>
@@ -78,7 +100,12 @@ function RecentLogs({ logs = [] }) {
 
         </div>
 
-        <div className="recent-logs-count">
+        <div
+          className="recent-logs-count"
+          style={{
+            textAlign: "center",
+          }}
+        >
           {history.length}{" "}
           {history.length === 1
             ? "Detection"
@@ -86,9 +113,6 @@ function RecentLogs({ logs = [] }) {
         </div>
 
       </div>
-
-
-      {/* TABLE */}
 
       {history.length > 0 ? (
         <div className="recent-logs-table-container">
@@ -131,6 +155,13 @@ function RecentLogs({ logs = [] }) {
                   const normal =
                     isNormal(prediction);
 
+                  const confidence =
+                    Number(
+                      item?.confidence ??
+                      item?.ml_confidence ??
+                      0
+                    ) || 0;
+
                   return (
                     <tr
                       key={
@@ -154,7 +185,6 @@ function RecentLogs({ logs = [] }) {
                         </div>
                       </td>
 
-
                       <td>
                         <div
                           className={
@@ -177,7 +207,6 @@ function RecentLogs({ logs = [] }) {
                         </div>
                       </td>
 
-
                       <td>
                         <div className="detection-confidence">
 
@@ -188,25 +217,24 @@ function RecentLogs({ logs = [] }) {
                           </span>
 
                           <div className="detection-confidence-track">
+
                             <div
                               className="detection-confidence-fill"
                               style={{
                                 width: `${Math.min(
                                   Math.max(
-                                    Number(
-                                      item?.confidence
-                                    ) || 0,
+                                    confidence,
                                     0
                                   ),
                                   100
                                 )}%`,
                               }}
                             />
+
                           </div>
 
                         </div>
                       </td>
-
 
                       <td>
                         <div className="detection-source">
@@ -221,7 +249,6 @@ function RecentLogs({ logs = [] }) {
 
                         </div>
                       </td>
-
 
                       <td>
                         <div className="detection-time">

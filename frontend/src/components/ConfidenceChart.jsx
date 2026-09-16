@@ -1,414 +1,242 @@
-import React from "react";
+import {
+  FaChartLine,
+  FaPercentage,
+} from "react-icons/fa";
 
 import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
   Tooltip,
-  Legend,
-} from "chart.js";
+} from "recharts";
 
-import { Line } from "react-chartjs-2";
-
-
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Tooltip,
-  Legend
-);
-
-
-function ConfidenceChart({
-  confidence,
-  prediction,
-  data,
-  result,
-  history,
-  detections,
-}) {
-  /* =========================================================
-     FIND SOURCE DATA
-  ========================================================= */
-
-  const source =
-    result ??
-    data ??
-    history ??
-    detections;
-
-
-  /* =========================================================
-     NORMALIZE HISTORY
-  ========================================================= */
-
-  let historyData = [];
-
-  if (Array.isArray(source)) {
-    historyData = source;
-  } else if (
-    source &&
-    typeof source === "object"
-  ) {
-    historyData = [source];
-  }
-
-
-  /* =========================================================
-     FALLBACK
-  ========================================================= */
-
-  if (
-    historyData.length === 0 &&
-    (
-      confidence !== undefined ||
-      prediction !== undefined
-    )
-  ) {
-    historyData = [
-      {
-        prediction:
-          prediction || "Unknown",
+function ConfidenceChart({ data = [] }) {
+  const chartData = Array.isArray(data)
+    ? data.map((item, index) => ({
+        name:
+          item?.name ||
+          item?.id ||
+          `Detection ${index + 1}`,
 
         confidence:
-          confidence || 0,
-      },
-    ];
-  }
+          Number(
+            item?.confidence ??
+            item?.value ??
+            0
+          ) || 0,
 
+        prediction:
+          item?.prediction ||
+          item?.label ||
+          "Unknown",
+      }))
+    : [];
 
-  /* =========================================================
-     EXTRACT VALID DETECTIONS
-  ========================================================= */
+  const averageConfidence =
+    chartData.length > 0
+      ? chartData.reduce(
+          (sum, item) =>
+            sum + item.confidence,
+          0
+        ) / chartData.length
+      : 0;
 
-  const chartItems = historyData
-    .map((item, index) => {
-      const itemPrediction =
-        item?.prediction ??
-        item?.label ??
-        item?.attack ??
-        item?.detection ??
-        item?.final_prediction ??
-        "Unknown";
-
-      const itemConfidence =
-        item?.confidence ??
-        item?.ml_confidence ??
-        item?.prediction_confidence ??
-        item?.score ??
-        0;
-
-      const numericConfidence =
-        Number(itemConfidence);
-
-      const safeConfidence =
-        Number.isFinite(numericConfidence)
-          ? Math.max(
-              0,
-              Math.min(
-                100,
-                numericConfidence
-              )
-            )
-          : 0;
-
-      const safePrediction =
-        itemPrediction &&
-        String(itemPrediction).trim()
-          ? String(itemPrediction).trim()
-          : "Unknown";
-
-      return {
-        index,
-        prediction: safePrediction,
-        confidence: safeConfidence,
-      };
-    })
-    .filter(
-      (item) =>
-        item.prediction !== "Unknown"
-    );
-
-
-  /* =========================================================
-     LAST 10 DETECTIONS
-  ========================================================= */
-
-  const displayedItems =
-    chartItems.slice(-10);
-
-
-  /* =========================================================
-     EMPTY STATE
-  ========================================================= */
-
-  if (displayedItems.length === 0) {
-    return (
-      <div
-        className="info-card"
-        style={{
-          width: "100%",
-          padding: "20px 22px",
-        }}
-      >
-        <h3
-          style={{
-            margin: 0,
-            fontSize: "22px",
-            fontWeight: "700",
-            textAlign: "center",
-          }}
-        >
-          Confidence History
-        </h3>
-
-        <div
-          style={{
-            height: "120px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "#8f8f8f",
-            textAlign: "center",
-            fontSize: "14px",
-          }}
-        >
-          No confidence data available yet.
-        </div>
-      </div>
-    );
-  }
-
-
-  /* =========================================================
-     LABELS
-  ========================================================= */
-
-  const labels =
-    displayedItems.map(
-      (_, index) =>
-        `Detection ${index + 1}`
-    );
-
-
-  /* =========================================================
-     CHART DATA
-  ========================================================= */
-
-  const chartData = {
-    labels,
-
-    datasets: [
-      {
-        label: "Confidence",
-
-        data: displayedItems.map(
-          (item) => item.confidence
-        ),
-
-        borderColor: "#38bdf8",
-
-        backgroundColor:
-          "rgba(56, 189, 248, 0.10)",
-
-        pointBackgroundColor:
-          "#38bdf8",
-
-        pointBorderColor:
-          "#38bdf8",
-
-        pointRadius: 3.5,
-
-        pointHoverRadius: 5,
-
-        borderWidth: 2,
-
-        tension: 0.3,
-
-        fill: true,
-      },
-    ],
-  };
-
-
-  /* =========================================================
-     CHART OPTIONS
-  ========================================================= */
-
-  const chartOptions = {
-    responsive: true,
-
-    maintainAspectRatio: false,
-
-    animation: {
-      duration: 400,
-    },
-
-    plugins: {
-      legend: {
-        display: false,
-      },
-
-      tooltip: {
-        callbacks: {
-          title: function (_, items) {
-            if (!items?.length) {
-              return "Detection";
-            }
-
-            const index =
-              items[0].dataIndex;
-
-            return (
-              displayedItems[index]
-                ?.prediction ||
-              "Detection"
-            );
-          },
-
-          label: function (context) {
-            const value =
-              Number(context.raw);
-
-            return ` Confidence: ${
-              Number.isFinite(value)
-                ? value.toFixed(2)
-                : "0.00"
-            }%`;
-          },
-        },
-      },
-    },
-
-    scales: {
-      x: {
-        ticks: {
-          color: "#8f8f8f",
-
-          font: {
-            size: 10,
-          },
-
-          maxRotation: 0,
-
-          autoSkip: true,
-
-          maxTicksLimit: 10,
-        },
-
-        grid: {
-          color:
-            "rgba(255,255,255,0.04)",
-        },
-
-        border: {
-          display: false,
-        },
-      },
-
-      y: {
-        min: 0,
-
-        max: 100,
-
-        ticks: {
-          stepSize: 20,
-
-          color: "#8f8f8f",
-
-          font: {
-            size: 10,
-          },
-
-          callback: function (value) {
-            return `${value}%`;
-          },
-        },
-
-        grid: {
-          color:
-            "rgba(255,255,255,0.04)",
-        },
-
-        border: {
-          display: false,
-        },
-      },
-    },
-
-    interaction: {
-      intersect: false,
-
-      mode: "index",
-    },
-  };
-
-
-  /* =========================================================
-     RENDER
-  ========================================================= */
+  const latestConfidence =
+    chartData.length > 0
+      ? chartData[
+          chartData.length - 1
+        ].confidence
+      : 0;
 
   return (
-    <div
-      className="info-card"
-      style={{
-        width: "100%",
-        padding: "20px 22px",
-      }}
-    >
-
-      {/* HEADER */}
+    <div className="info-card confidence-history-card">
 
       <div
+        className="confidence-history-header"
         style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
           textAlign: "center",
-          marginBottom: "10px",
         }}
       >
-        <h3
+
+        <div
+          className="confidence-history-heading"
           style={{
-            margin: 0,
-            fontSize: "22px",
-            fontWeight: "700",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            textAlign: "center",
+            width: "100%",
           }}
         >
-          Confidence History
-        </h3>
 
-        <p
-          style={{
-            margin: "5px 0 0",
-            color: "#8f8f8f",
-            fontSize: "13px",
-          }}
-        >
-          Confidence across recent detections
-        </p>
+          <div className="confidence-history-icon">
+            <FaChartLine />
+          </div>
+
+          <div
+            style={{
+              width: "100%",
+              textAlign: "center",
+            }}
+          >
+            <h3>
+              Confidence History
+            </h3>
+
+            <p>
+              Model confidence across recent
+              security detections.
+            </p>
+          </div>
+
+        </div>
+
+        {chartData.length > 0 && (
+          <div className="confidence-history-stats">
+
+            <div>
+              <span>
+                AVERAGE
+              </span>
+
+              <strong>
+                {averageConfidence.toFixed(2)}%
+              </strong>
+            </div>
+
+            <div>
+              <span>
+                LATEST
+              </span>
+
+              <strong>
+                {latestConfidence.toFixed(2)}%
+              </strong>
+            </div>
+
+          </div>
+        )}
+
       </div>
 
+      {chartData.length > 0 ? (
+        <div className="confidence-history-chart">
 
-      {/* CHART */}
+          <ResponsiveContainer
+            width="100%"
+            height={360}
+          >
+            <LineChart
+              data={chartData}
+              margin={{
+                top: 20,
+                right: 20,
+                left: 5,
+                bottom: 10,
+              }}
+            >
 
-      <div
-        style={{
-          width: "100%",
-          height: "220px",
-          position: "relative",
-        }}
-      >
-        <Line
-          data={chartData}
-          options={chartOptions}
-        />
-      </div>
+              <CartesianGrid
+                stroke="#242424"
+                strokeDasharray="3 3"
+              />
+
+              <XAxis
+                dataKey="name"
+                stroke="#666666"
+                tick={{
+                  fill: "#777780",
+                  fontSize: 10,
+                }}
+                tickLine={false}
+                axisLine={{
+                  stroke: "#292929",
+                }}
+              />
+
+              <YAxis
+                domain={[0, 100]}
+                stroke="#666666"
+                tick={{
+                  fill: "#777780",
+                  fontSize: 10,
+                }}
+                tickLine={false}
+                axisLine={{
+                  stroke: "#292929",
+                }}
+                tickFormatter={(value) =>
+                  `${value}%`
+                }
+              />
+
+              <Tooltip
+                contentStyle={{
+                  background: "#151515",
+                  border:
+                    "1px solid #303030",
+                  borderRadius: "10px",
+                  color: "#f5f5f5",
+                }}
+                labelStyle={{
+                  color: "#f5f5f5",
+                  marginBottom: "5px",
+                }}
+                formatter={(value) => [
+                  `${Number(
+                    value
+                  ).toFixed(2)}%`,
+                  "Confidence",
+                ]}
+              />
+
+              <Line
+                type="monotone"
+                dataKey="confidence"
+                stroke="#38bdf8"
+                strokeWidth={3}
+                dot={{
+                  r: 4,
+                  fill: "#38bdf8",
+                  stroke: "#0d0d0d",
+                  strokeWidth: 2,
+                }}
+                activeDot={{
+                  r: 6,
+                }}
+              />
+
+            </LineChart>
+          </ResponsiveContainer>
+
+        </div>
+      ) : (
+        <div className="confidence-history-empty">
+
+          <FaPercentage />
+
+          <strong>
+            No Confidence History
+          </strong>
+
+          <p>
+            Complete an analysis to populate
+            the confidence history chart.
+          </p>
+
+        </div>
+      )}
 
     </div>
   );
 }
-
 
 export default ConfidenceChart;

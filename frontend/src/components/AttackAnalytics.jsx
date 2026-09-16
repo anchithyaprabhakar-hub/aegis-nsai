@@ -171,19 +171,39 @@ function AttackAnalytics({ logs = [], analysisHistory = [] }) {
   return (
     <div className="info-card analytics-card">
 
-      {/* =====================================================
-          HEADER
-      ===================================================== */}
+      <div
+        className="analytics-header"
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          textAlign: "center",
+        }}
+      >
 
-      <div className="analytics-header">
-
-        <div className="analytics-heading">
+        <div
+          className="analytics-heading"
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            textAlign: "center",
+            width: "100%",
+          }}
+        >
 
           <div className="analytics-heading-icon">
             <FaChartLine />
           </div>
 
-          <div>
+          <div
+            style={{
+              width: "100%",
+              textAlign: "center",
+            }}
+          >
             <h3>
               Attack Analytics
             </h3>
@@ -196,7 +216,12 @@ function AttackAnalytics({ logs = [], analysisHistory = [] }) {
 
         </div>
 
-        <div className="analytics-count">
+        <div
+          className="analytics-count"
+          style={{
+            textAlign: "center",
+          }}
+        >
           {totalAnalyses}{" "}
           {totalAnalyses === 1
             ? "Analysis"
@@ -204,11 +229,6 @@ function AttackAnalytics({ logs = [], analysisHistory = [] }) {
         </div>
 
       </div>
-
-
-      {/* =====================================================
-          METRICS
-      ===================================================== */}
 
       {totalAnalyses > 0 ? (
         <div className="analytics-grid">
@@ -260,11 +280,6 @@ function AttackAnalytics({ logs = [], analysisHistory = [] }) {
 
         </div>
       )}
-
-
-      {/* =====================================================
-          LATEST ANALYSIS SUMMARY
-      ===================================================== */}
 
       {latestDetection && (
         <div className="analytics-latest">
