@@ -1,513 +1,268 @@
 import {
-  FaClock,
+  FaHistory,
   FaShieldAlt,
-  FaBullseye,
-  FaFingerprint,
-  FaFileCsv,
+  FaCheckCircle,
+  FaExclamationTriangle,
+  FaClock,
 } from "react-icons/fa";
 
-
 function RecentLogs({ logs = [] }) {
-  const safeLogs = Array.isArray(logs)
-    ? logs
+  const history = Array.isArray(logs)
+    ? [...logs].reverse()
     : [];
 
+  const getPrediction = (item) =>
+    item?.prediction ||
+    item?.final_prediction ||
+    item?.label ||
+    "Unknown";
 
-  /* =========================================================
-     SEVERITY
-  ========================================================= */
+  const getConfidence = (item) => {
+    const value =
+      Number(
+        item?.confidence ??
+        item?.ml_confidence ??
+        0
+      ) || 0;
 
-  const getSeverity = (
-    prediction,
-    confidence
-  ) => {
-    const normalizedPrediction =
-      String(prediction || "")
-        .trim()
-        .toLowerCase();
-
-    if (
-      normalizedPrediction === "normal" ||
-      normalizedPrediction === "benign"
-    ) {
-      return {
-        label: "Low",
-        color: "#22c55e",
-      };
-    }
-
-    const value = Number(confidence);
-
-    if (!Number.isFinite(value)) {
-      return {
-        label: "Review",
-        color: "#facc15",
-      };
-    }
-
-    if (value >= 80) {
-      return {
-        label: "Critical",
-        color: "#ef4444",
-      };
-    }
-
-    if (value >= 60) {
-      return {
-        label: "High",
-        color: "#f97316",
-      };
-    }
-
-    if (value >= 30) {
-      return {
-        label: "Medium",
-        color: "#facc15",
-      };
-    }
-
-    return {
-      label: "Low",
-      color: "#22c55e",
-    };
+    return `${value.toFixed(2)}%`;
   };
 
+  const getTime = (item) =>
+    item?.timestamp ||
+    item?.detection_time ||
+    item?.detectionTime ||
+    item?.analysis_time ||
+    "--:--:--";
 
-  /* =========================================================
-     NEWEST FIRST
-  ========================================================= */
+  const getFileName = (item) =>
+    item?.file_name ||
+    item?.filename ||
+    item?.fileName ||
+    "Network Flow Dataset";
 
-  const displayedLogs =
-    [...safeLogs].reverse();
+  const isNormal = (prediction) => {
+    const value = String(prediction)
+      .trim()
+      .toLowerCase();
 
-
-  /* =========================================================
-     EMPTY STATE
-  ========================================================= */
-
-  if (safeLogs.length === 0) {
     return (
-      <div
-        className="info-card recent-logs"
-        style={{
-          width: "100%",
-          padding: "20px 22px",
-        }}
-      >
-
-        <div
-          style={{
-            textAlign: "center",
-          }}
-        >
-          <h3
-            style={{
-              margin: 0,
-              fontSize: "22px",
-              fontWeight: "700",
-            }}
-          >
-            Recent Detections
-          </h3>
-
-          <div
-            style={{
-              minHeight: "120px",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "#8f8f8f",
-            }}
-          >
-
-            <FaShieldAlt
-              size={32}
-              style={{
-                marginBottom: "10px",
-                opacity: 0.5,
-              }}
-            />
-
-            <h4
-              style={{
-                margin: "0 0 5px",
-                color: "#d4d4d8",
-              }}
-            >
-              No detections yet
-            </h4>
-
-            <p
-              style={{
-                margin: 0,
-                fontSize: "13px",
-              }}
-            >
-              Upload a CSV file to begin
-              network analysis.
-            </p>
-
-          </div>
-        </div>
-
-      </div>
+      value === "normal" ||
+      value === "benign"
     );
-  }
-
-
-  /* =========================================================
-     RENDER
-  ========================================================= */
+  };
 
   return (
-    <div
-      className="info-card recent-logs"
-      style={{
-        width: "100%",
-        padding: "20px 22px",
-      }}
-    >
+    <div className="info-card recent-logs-card">
 
       {/* HEADER */}
 
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: "12px",
-          marginBottom: "12px",
-        }}
-      >
+      <div className="recent-logs-header">
 
-        <h3
-          style={{
-            margin: 0,
-            fontSize: "22px",
-            fontWeight: "700",
-          }}
-        >
-          Recent Detections
-        </h3>
+        <div className="recent-logs-heading">
 
-        <span
-          style={{
-            background: "#222222",
-            color: "#22c55e",
-            padding: "5px 12px",
-            borderRadius: "20px",
-            fontSize: "12px",
-            fontWeight: "700",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {safeLogs.length}{" "}
-          {safeLogs.length === 1
+          <div className="recent-logs-icon">
+            <FaHistory />
+          </div>
+
+          <div>
+            <h3>
+              Recent Detections
+            </h3>
+
+            <p>
+              Historical network-security
+              analysis results.
+            </p>
+          </div>
+
+        </div>
+
+        <div className="recent-logs-count">
+          {history.length}{" "}
+          {history.length === 1
             ? "Detection"
             : "Detections"}
-        </span>
+        </div>
 
       </div>
 
 
-      {/* COLUMN HEADERS */}
+      {/* TABLE */}
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns:
-            "0.8fr 1.7fr 1.2fr 1.1fr 0.8fr 0.7fr",
-          gap: "10px",
-          padding: "8px 12px",
-          color: "#777777",
-          fontSize: "10px",
-          fontWeight: "700",
-          textTransform: "uppercase",
-          letterSpacing: "0.7px",
-        }}
-      >
-        <span>Detection</span>
-        <span>Dataset</span>
-        <span>Time</span>
-        <span>Prediction</span>
-        <span>Confidence</span>
-        <span>Severity</span>
-      </div>
+      {history.length > 0 ? (
+        <div className="recent-logs-table-container">
 
+          <table className="recent-logs-table">
 
-      {/* DETECTION ROWS */}
+            <thead>
+              <tr>
+                <th>
+                  DETECTION
+                </th>
 
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: "7px",
-        }}
-      >
+                <th>
+                  CLASSIFICATION
+                </th>
 
-        {displayedLogs.map(
-          (log, index) => {
+                <th>
+                  CONFIDENCE
+                </th>
 
-            const confidence =
-              Number(log?.confidence);
+                <th>
+                  SOURCE
+                </th>
 
-            const safeConfidence =
-              Number.isFinite(confidence)
-                ? confidence
-                : 0;
+                <th>
+                  TIME
+                </th>
+              </tr>
+            </thead>
 
-            const prediction =
-              log?.prediction ||
-              "Unknown";
+            <tbody>
 
-            const severity =
-              getSeverity(
-                prediction,
-                safeConfidence
-              );
+              {history
+                .slice(0, 10)
+                .map((item, index) => {
 
-            const detectionId =
-              log?.id ||
-              `DET-${String(
-                safeLogs.length - index
-              ).padStart(3, "0")}`;
+                  const prediction =
+                    getPrediction(item);
 
-            const filename =
-              log?.filename ||
-              "Uploaded network dataset";
+                  const normal =
+                    isNormal(prediction);
 
-            const timestamp =
-              log?.timestamp ||
-              log?.time ||
-              "Unknown time";
+                  return (
+                    <tr
+                      key={
+                        item?.id ||
+                        `detection-${index}`
+                      }
+                    >
+
+                      <td>
+                        <div className="detection-id">
+                          <span>
+                            DET-
+                            {String(
+                              history.length -
+                                index
+                            ).padStart(
+                              3,
+                              "0"
+                            )}
+                          </span>
+                        </div>
+                      </td>
 
 
-            return (
-              <div
-                key={`${detectionId}-${index}`}
-                className={
-                  index === 0
-                    ? "log-row latest-row"
-                    : "log-row"
-                }
-                style={{
-                  display: "grid",
-                  gridTemplateColumns:
-                    "0.8fr 1.7fr 1.2fr 1.1fr 0.8fr 0.7fr",
-                  alignItems: "center",
-                  gap: "10px",
-                  minHeight: "52px",
-                  padding: "9px 12px",
-                  borderRadius: "10px",
-                  background:
-                    index === 0
-                      ? "#181818"
-                      : "#111111",
-                  border:
-                    index === 0
-                      ? "1px solid #303030"
-                      : "1px solid #242424",
-                }}
-              >
+                      <td>
+                        <div
+                          className={
+                            normal
+                              ? "detection-classification detection-normal"
+                              : "detection-classification detection-attack"
+                          }
+                        >
 
-                {/* DETECTION ID */}
+                          {normal ? (
+                            <FaCheckCircle />
+                          ) : (
+                            <FaExclamationTriangle />
+                          )}
 
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "7px",
-                    minWidth: 0,
-                    fontSize: "12px",
-                    fontWeight: "600",
-                  }}
-                >
+                          <span>
+                            {prediction}
+                          </span>
 
-                  <FaFingerprint
-                    style={{
-                      flexShrink: 0,
-                      color: "#8f8f8f",
-                    }}
-                  />
-
-                  <span
-                    style={{
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {detectionId}
-                  </span>
-
-                </div>
+                        </div>
+                      </td>
 
 
-                {/* FILE */}
+                      <td>
+                        <div className="detection-confidence">
 
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "7px",
-                    minWidth: 0,
-                    fontSize: "12px",
-                    color: "#cfd3d8",
-                  }}
-                  title={filename}
-                >
+                          <span>
+                            {getConfidence(
+                              item
+                            )}
+                          </span>
 
-                  <FaFileCsv
-                    style={{
-                      flexShrink: 0,
-                      color: "#8f8f8f",
-                    }}
-                  />
+                          <div className="detection-confidence-track">
+                            <div
+                              className="detection-confidence-fill"
+                              style={{
+                                width: `${Math.min(
+                                  Math.max(
+                                    Number(
+                                      item?.confidence
+                                    ) || 0,
+                                    0
+                                  ),
+                                  100
+                                )}%`,
+                              }}
+                            />
+                          </div>
 
-                  <span
-                    style={{
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {filename}
-                  </span>
-
-                </div>
+                        </div>
+                      </td>
 
 
-                {/* TIME */}
+                      <td>
+                        <div className="detection-source">
 
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "7px",
-                    minWidth: 0,
-                    fontSize: "11px",
-                    color: "#9ca3af",
-                  }}
-                  title={timestamp}
-                >
+                          <FaShieldAlt />
 
-                  <FaClock
-                    style={{
-                      flexShrink: 0,
-                    }}
-                  />
+                          <span>
+                            {getFileName(
+                              item
+                            )}
+                          </span>
 
-                  <span
-                    style={{
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {timestamp}
-                  </span>
-
-                </div>
+                        </div>
+                      </td>
 
 
-                {/* PREDICTION */}
+                      <td>
+                        <div className="detection-time">
 
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "7px",
-                    minWidth: 0,
-                    fontSize: "12px",
-                    fontWeight: "600",
-                  }}
-                >
+                          <FaClock />
 
-                  <FaShieldAlt
-                    style={{
-                      flexShrink: 0,
-                      color:
-                        prediction === "Normal"
-                          ? "#22c55e"
-                          : "#ef4444",
-                    }}
-                  />
+                          <span>
+                            {getTime(item)}
+                          </span>
 
-                  <span
-                    style={{
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                    title={prediction}
-                  >
-                    {prediction}
-                  </span>
+                        </div>
+                      </td>
 
-                </div>
+                    </tr>
+                  );
+                })}
 
+            </tbody>
 
-                {/* CONFIDENCE */}
+          </table>
 
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "7px",
-                    fontSize: "12px",
-                    fontWeight: "600",
-                    color: "#d4d4d8",
-                  }}
-                >
+        </div>
+      ) : (
+        <div className="recent-logs-empty">
 
-                  <FaBullseye
-                    style={{
-                      color: "#38bdf8",
-                      flexShrink: 0,
-                    }}
-                  />
+          <FaHistory />
 
-                  <span>
-                    {safeConfidence.toFixed(2)}%
-                  </span>
+          <strong>
+            No Recent Detections
+          </strong>
 
-                </div>
+          <p>
+            Completed security analyses will
+            appear here.
+          </p>
 
-
-                {/* SEVERITY */}
-
-                <div>
-                  <span
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      minWidth: "58px",
-                      padding: "5px 9px",
-                      borderRadius: "20px",
-                      background:
-                        severity.color,
-                      color: "#000000",
-                      fontWeight: "700",
-                      fontSize: "10px",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {severity.label}
-                  </span>
-                </div>
-
-              </div>
-            );
-          }
-        )}
-
-      </div>
+        </div>
+      )}
 
     </div>
   );
 }
-
 
 export default RecentLogs;
