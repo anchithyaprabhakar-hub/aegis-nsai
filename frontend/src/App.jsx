@@ -153,9 +153,8 @@ function App() {
     ) || 0;
 
   const isNormal =
-    prediction === "Normal" ||
-    prediction === "BENIGN" ||
-    prediction === "Benign";
+    String(prediction).trim().toLowerCase() === "normal" ||
+    String(prediction).trim().toLowerCase() === "benign";
 
   const totalAnalyses =
     analysisHistory.length;
@@ -246,16 +245,44 @@ function App() {
     "CSV Network Traffic Analysis";
 
   /* =========================================================
-     ATTACK DISTRIBUTION DATA
+     ATTACK DISTRIBUTION
      ========================================================= */
 
-  const attackDistribution =
+  const historyDistribution = useMemo(() => {
+    const counts = {};
+
+    analysisHistory.forEach((item) => {
+      const label =
+        item?.prediction ||
+        item?.final_prediction ||
+        item?.label ||
+        "Unknown";
+
+      counts[label] =
+        (counts[label] || 0) + 1;
+    });
+
+    return Object.entries(counts).map(
+      ([name, value]) => ({
+        name,
+        value,
+      })
+    );
+  }, [analysisHistory]);
+
+  const backendDistribution =
     data?.attack_distribution ||
     data?.prediction_distribution ||
     data?.classification_distribution ||
     data?.label_distribution ||
     data?.distribution ||
     [];
+
+  const attackDistribution =
+    Array.isArray(backendDistribution) &&
+    backendDistribution.length > 0
+      ? backendDistribution
+      : historyDistribution;
 
   /* =========================================================
      RENDER
@@ -367,9 +394,7 @@ function App() {
         {data && (
           <>
 
-            {/* =================================================
-                CURRENT ANALYSIS
-                ================================================= */}
+            {/* CURRENT ANALYSIS */}
 
             <section className="current-analysis-card">
 
@@ -422,9 +447,7 @@ function App() {
 
             </section>
 
-            {/* =================================================
-                SUMMARY CARDS
-                ================================================= */}
+            {/* SUMMARY CARDS */}
 
             <section className="summary-grid">
 
@@ -435,7 +458,6 @@ function App() {
                 </div>
 
                 <div>
-
                   <div className="summary-card-label">
                     DETECTION
                   </div>
@@ -443,7 +465,6 @@ function App() {
                   <div className="summary-card-value">
                     {prediction}
                   </div>
-
                 </div>
 
               </div>
@@ -455,7 +476,6 @@ function App() {
                 </div>
 
                 <div>
-
                   <div className="summary-card-label">
                     CONFIDENCE
                   </div>
@@ -463,7 +483,6 @@ function App() {
                   <div className="summary-card-value">
                     {confidence.toFixed(2)}%
                   </div>
-
                 </div>
 
               </div>
@@ -475,7 +494,6 @@ function App() {
                 </div>
 
                 <div>
-
                   <div className="summary-card-label">
                     THREAT LEVEL
                   </div>
@@ -483,7 +501,6 @@ function App() {
                   <div className="summary-card-value">
                     {threatLevel}
                   </div>
-
                 </div>
 
               </div>
@@ -495,7 +512,6 @@ function App() {
                 </div>
 
                 <div>
-
                   <div className="summary-card-label">
                     RISK SCORE
                   </div>
@@ -503,7 +519,6 @@ function App() {
                   <div className="summary-card-value">
                     {riskScore}/100
                   </div>
-
                 </div>
 
               </div>
@@ -515,7 +530,6 @@ function App() {
                 </div>
 
                 <div>
-
                   <div className="summary-card-label">
                     SYMBOLIC SUPPORT
                   </div>
@@ -523,7 +537,6 @@ function App() {
                   <div className="summary-card-value">
                     {symbolicConfidence.toFixed(2)}%
                   </div>
-
                 </div>
 
               </div>
@@ -535,7 +548,6 @@ function App() {
                 </div>
 
                 <div>
-
                   <div className="summary-card-label">
                     ROWS PROCESSED
                   </div>
@@ -545,16 +557,13 @@ function App() {
                       rowsProcessed
                     ).toLocaleString()}
                   </div>
-
                 </div>
 
               </div>
 
             </section>
 
-            {/* =================================================
-                PREDICTION + CONFIDENCE
-                ================================================= */}
+            {/* PREDICTION + CONFIDENCE */}
 
             <section className="result-two-column">
 
@@ -569,9 +578,7 @@ function App() {
 
             </section>
 
-            {/* =================================================
-                AI EXPLANATION
-                ================================================= */}
+            {/* AI EXPLANATION */}
 
             <ExplanationCard
               prediction={prediction}
@@ -580,18 +587,14 @@ function App() {
               data={data}
             />
 
-            {/* =================================================
-                KNOWLEDGE GRAPH
-                ================================================= */}
+            {/* KNOWLEDGE GRAPH */}
 
             <KnowledgeGraph
               graph={knowledgeGraph}
               prediction={prediction}
             />
 
-            {/* =================================================
-                ATTACK DESCRIPTION
-                ================================================= */}
+            {/* ATTACK DESCRIPTION */}
 
             <section className="info-card attack-description-card">
 
@@ -621,9 +624,7 @@ function App() {
 
             </section>
 
-            {/* =================================================
-                RECOMMENDATIONS
-                ================================================= */}
+            {/* RECOMMENDATIONS */}
 
             <ThreatRecommendation
               prediction={prediction}
@@ -631,42 +632,32 @@ function App() {
               data={data}
             />
 
-            {/* =================================================
-                REPORT
-                ================================================= */}
+            {/* REPORT */}
 
             <DownloadReport
               data={data}
             />
 
-            {/* =================================================
-                ANALYTICS
-                ================================================= */}
+            {/* ANALYTICS */}
 
             <AttackAnalytics
               logs={analysisHistory}
               analysisHistory={analysisHistory}
             />
 
-            {/* =================================================
-                ATTACK DISTRIBUTION
-                ================================================= */}
+            {/* ATTACK DISTRIBUTION */}
 
             <AttackChart
               data={attackDistribution}
             />
 
-            {/* =================================================
-                CONFIDENCE HISTORY
-                ================================================= */}
+            {/* CONFIDENCE HISTORY */}
 
             <ConfidenceChart
               data={analysisHistory}
             />
 
-            {/* =================================================
-                RECENT DETECTIONS
-                ================================================= */}
+            {/* RECENT DETECTIONS */}
 
             <RecentLogs
               logs={analysisHistory}
