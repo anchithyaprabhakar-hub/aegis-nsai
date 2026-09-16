@@ -28,17 +28,30 @@ function App() {
   const [data, setData] = useState(null);
   const [analysisHistory, setAnalysisHistory] = useState([]);
 
+  /* =========================================================
+     LOAD HISTORY
+     ========================================================= */
+
   useEffect(() => {
     try {
-      const savedHistory = localStorage.getItem("aegis-analysis-history");
+      const savedHistory = localStorage.getItem(
+        "aegis-analysis-history"
+      );
 
       if (savedHistory) {
         setAnalysisHistory(JSON.parse(savedHistory));
       }
     } catch (error) {
-      console.error("Failed to load analysis history:", error);
+      console.error(
+        "Failed to load analysis history:",
+        error
+      );
     }
   }, []);
+
+  /* =========================================================
+     SAVE HISTORY
+     ========================================================= */
 
   useEffect(() => {
     try {
@@ -47,19 +60,27 @@ function App() {
         JSON.stringify(analysisHistory)
       );
     } catch (error) {
-      console.error("Failed to save analysis history:", error);
+      console.error(
+        "Failed to save analysis history:",
+        error
+      );
     }
   }, [analysisHistory]);
+
+  /* =========================================================
+     HANDLE PREDICTION
+     ========================================================= */
 
   const handlePrediction = (result) => {
     const analysisTimestamp = new Date();
 
-    const detectionTime = analysisTimestamp.toLocaleTimeString("en-GB", {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: false,
-    });
+    const detectionTime =
+      analysisTimestamp.toLocaleTimeString("en-GB", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      });
 
     const analysisResult = {
       ...result,
@@ -72,21 +93,30 @@ function App() {
     setData(analysisResult);
 
     const historyItem = {
-      id: `DET-${String(analysisHistory.length + 1).padStart(3, "0")}`,
+      id: `DET-${String(
+        analysisHistory.length + 1
+      ).padStart(3, "0")}`,
+
       prediction:
         analysisResult?.prediction ||
         analysisResult?.final_prediction ||
         "Unknown",
+
       confidence:
         analysisResult?.confidence ??
         analysisResult?.ml_confidence ??
         0,
+
       source:
         analysisResult?.filename ||
         analysisResult?.file_name ||
         "CSV Upload",
+
       time: detectionTime,
-      timestamp: analysisTimestamp.toISOString(),
+
+      timestamp:
+        analysisTimestamp.toISOString(),
+
       result: analysisResult,
     };
 
@@ -96,9 +126,17 @@ function App() {
     ]);
   };
 
+  /* =========================================================
+     RESET
+     ========================================================= */
+
   const handleReset = () => {
     setData(null);
   };
+
+  /* =========================================================
+     DERIVED VALUES
+     ========================================================= */
 
   const prediction =
     data?.prediction ||
@@ -119,7 +157,8 @@ function App() {
     prediction === "BENIGN" ||
     prediction === "Benign";
 
-  const totalAnalyses = analysisHistory.length;
+  const totalAnalyses =
+    analysisHistory.length;
 
   const threatLevel = useMemo(() => {
     if (!data || isNormal) {
@@ -139,7 +178,10 @@ function App() {
 
   const riskScore = isNormal
     ? 0
-    : Math.min(100, Math.max(0, Math.round(confidence)));
+    : Math.min(
+        100,
+        Math.max(0, Math.round(confidence))
+      );
 
   const attackDescription =
     data?.attack_description ||
@@ -166,8 +208,13 @@ function App() {
     data?.ai_explanation ||
     "The prediction is generated using the neuro-symbolic detection pipeline.";
 
+  /* =========================================================
+     KNOWLEDGE GRAPH
+     ========================================================= */
+
   const knowledgeGraph =
-    Array.isArray(data?.knowledge_graph) && data.knowledge_graph.length > 0
+    Array.isArray(data?.knowledge_graph) &&
+    data.knowledge_graph.length > 0
       ? data.knowledge_graph
       : isNormal
       ? [
@@ -183,6 +230,10 @@ function App() {
           "Security Context",
         ];
 
+  /* =========================================================
+     ANALYSIS INFORMATION
+     ========================================================= */
+
   const rowsProcessed =
     data?.rows_processed ??
     data?.total_rows ??
@@ -194,15 +245,38 @@ function App() {
     data?.analysis_mode ||
     "CSV Network Traffic Analysis";
 
+  /* =========================================================
+     ATTACK DISTRIBUTION DATA
+     ========================================================= */
+
+  const attackDistribution =
+    data?.attack_distribution ||
+    data?.prediction_distribution ||
+    data?.classification_distribution ||
+    data?.label_distribution ||
+    data?.distribution ||
+    [];
+
+  /* =========================================================
+     RENDER
+     ========================================================= */
+
   return (
     <div className="app">
       <main className="main-content">
-        {/* SYSTEM STATUS */}
+
+        {/* =====================================================
+            SYSTEM STATUS
+            ===================================================== */}
+
         <section className="system-status-card">
+
           <div className="system-status-left">
+
             <div className="system-online-dot"></div>
 
             <div>
+
               <div className="system-title">
                 <FaDatabase />
                 <span>System Online</span>
@@ -210,64 +284,99 @@ function App() {
 
               <div className="system-analysis-count">
                 Total Analyses:
-                <strong>{totalAnalyses}</strong>
+                <strong>
+                  {totalAnalyses}
+                </strong>
               </div>
+
             </div>
+
           </div>
 
           <div className="system-status-right">
-            <div className="ai-engine-label">AI ENGINE</div>
+
+            <div className="ai-engine-label">
+              AI ENGINE
+            </div>
 
             <div className="ai-engine-status">
               <FaBrain />
               <span>ACTIVE</span>
             </div>
+
           </div>
 
           <div className="system-time">
+
             <div className="system-date">
-              {new Date().toLocaleDateString("en-GB")}
+              {new Date().toLocaleDateString(
+                "en-GB"
+              )}
             </div>
 
             <div className="system-clock">
-              {new Date().toLocaleTimeString("en-GB", {
-                hour12: false,
-              })}
+              {new Date().toLocaleTimeString(
+                "en-GB",
+                {
+                  hour12: false,
+                }
+              )}
             </div>
+
           </div>
+
         </section>
 
-        {/* HERO */}
-        <section
-          className="hero"
-          style={{
-            height: "220px",
-            minHeight: "220px",
-          }}
-        >
+        {/* =====================================================
+            HERO
+            ===================================================== */}
+
+        <section className="hero">
+
           <div className="hero-icon">
             <FaShieldAlt />
           </div>
 
-          <h1>AEGIS-NSAI</h1>
+          <h1>
+            AEGIS-NSAI
+          </h1>
 
-          <p>Neuro-Symbolic Intrusion Detection System</p>
+          <p>
+            Neuro-Symbolic Intrusion Detection System
+          </p>
 
-          <span>Version 1.0 · CSV Network Analysis</span>
+          <span>
+            Version 1.0 · CSV Network Analysis
+          </span>
+
         </section>
 
-        {/* FILE UPLOAD */}
+        {/* =====================================================
+            FILE UPLOAD
+            ===================================================== */}
+
         <FileUpload
           onPrediction={handlePrediction}
           onReset={handleReset}
         />
 
-        {/* CURRENT ANALYSIS */}
+        {/* =====================================================
+            RESULTS
+            ===================================================== */}
+
         {data && (
           <>
+
+            {/* =================================================
+                CURRENT ANALYSIS
+                ================================================= */}
+
             <section className="current-analysis-card">
+
               <div className="current-analysis-header">
+
                 <div>
+
                   <div className="section-eyebrow">
                     CURRENT ANALYSIS
                   </div>
@@ -276,15 +385,21 @@ function App() {
                     <FaNetworkWired />
                     Network Traffic Assessment
                   </h2>
+
                 </div>
 
                 <div className="analysis-status">
+
                   <span className="status-dot"></span>
+
                   ANALYSIS COMPLETE
+
                 </div>
+
               </div>
 
               <div className="analysis-meta">
+
                 <span>
                   <FaClock />
                   {detectionTime}
@@ -292,24 +407,35 @@ function App() {
 
                 <span>
                   <FaDatabase />
-                  {rowsProcessed.toLocaleString()} rows
+                  {Number(
+                    rowsProcessed
+                  ).toLocaleString()}{" "}
+                  rows
                 </span>
 
                 <span>
                   <FaProjectDiagram />
                   {analysisType}
                 </span>
+
               </div>
+
             </section>
 
-            {/* SUMMARY CARDS */}
+            {/* =================================================
+                SUMMARY CARDS
+                ================================================= */}
+
             <section className="summary-grid">
+
               <div className="summary-card">
+
                 <div className="summary-card-icon">
                   <FaShieldAlt />
                 </div>
 
                 <div>
+
                   <div className="summary-card-label">
                     DETECTION
                   </div>
@@ -317,15 +443,19 @@ function App() {
                   <div className="summary-card-value">
                     {prediction}
                   </div>
+
                 </div>
+
               </div>
 
               <div className="summary-card">
+
                 <div className="summary-card-icon">
                   <FaBrain />
                 </div>
 
                 <div>
+
                   <div className="summary-card-label">
                     CONFIDENCE
                   </div>
@@ -333,15 +463,19 @@ function App() {
                   <div className="summary-card-value">
                     {confidence.toFixed(2)}%
                   </div>
+
                 </div>
+
               </div>
 
               <div className="summary-card">
+
                 <div className="summary-card-icon">
                   <FaExclamationTriangle />
                 </div>
 
                 <div>
+
                   <div className="summary-card-label">
                     THREAT LEVEL
                   </div>
@@ -349,15 +483,19 @@ function App() {
                   <div className="summary-card-value">
                     {threatLevel}
                   </div>
+
                 </div>
+
               </div>
 
               <div className="summary-card">
+
                 <div className="summary-card-icon">
                   <FaProjectDiagram />
                 </div>
 
                 <div>
+
                   <div className="summary-card-label">
                     RISK SCORE
                   </div>
@@ -365,15 +503,19 @@ function App() {
                   <div className="summary-card-value">
                     {riskScore}/100
                   </div>
+
                 </div>
+
               </div>
 
               <div className="summary-card">
+
                 <div className="summary-card-icon">
                   <FaBrain />
                 </div>
 
                 <div>
+
                   <div className="summary-card-label">
                     SYMBOLIC SUPPORT
                   </div>
@@ -381,28 +523,41 @@ function App() {
                   <div className="summary-card-value">
                     {symbolicConfidence.toFixed(2)}%
                   </div>
+
                 </div>
+
               </div>
 
               <div className="summary-card">
+
                 <div className="summary-card-icon">
                   <FaDatabase />
                 </div>
 
                 <div>
+
                   <div className="summary-card-label">
                     ROWS PROCESSED
                   </div>
 
                   <div className="summary-card-value">
-                    {Number(rowsProcessed).toLocaleString()}
+                    {Number(
+                      rowsProcessed
+                    ).toLocaleString()}
                   </div>
+
                 </div>
+
               </div>
+
             </section>
 
-            {/* PREDICTION + CONFIDENCE */}
+            {/* =================================================
+                PREDICTION + CONFIDENCE
+                ================================================= */}
+
             <section className="result-two-column">
+
               <PredictionCard
                 prediction={prediction}
                 confidence={confidence}
@@ -411,9 +566,13 @@ function App() {
               <ConfidenceBar
                 confidence={confidence}
               />
+
             </section>
 
-            {/* AI EXPLANATION */}
+            {/* =================================================
+                AI EXPLANATION
+                ================================================= */}
+
             <ExplanationCard
               prediction={prediction}
               confidence={confidence}
@@ -421,66 +580,101 @@ function App() {
               data={data}
             />
 
-            {/* KNOWLEDGE GRAPH */}
+            {/* =================================================
+                KNOWLEDGE GRAPH
+                ================================================= */}
+
             <KnowledgeGraph
               graph={knowledgeGraph}
               prediction={prediction}
             />
 
-            {/* ATTACK DESCRIPTION */}
+            {/* =================================================
+                ATTACK DESCRIPTION
+                ================================================= */}
+
             <section className="info-card attack-description-card">
+
               <div className="info-card-header">
+
                 <div className="info-card-icon">
                   <FaExclamationTriangle />
                 </div>
 
                 <div>
+
                   <div className="section-eyebrow">
                     ATTACK DESCRIPTION
                   </div>
 
-                  <h2>{prediction}</h2>
+                  <h2>
+                    {prediction}
+                  </h2>
+
                 </div>
+
               </div>
 
-              <p>{attackDescription}</p>
+              <p>
+                {attackDescription}
+              </p>
+
             </section>
 
-            {/* RECOMMENDATIONS */}
+            {/* =================================================
+                RECOMMENDATIONS
+                ================================================= */}
+
             <ThreatRecommendation
               prediction={prediction}
               confidence={confidence}
               data={data}
             />
 
-            {/* REPORT */}
+            {/* =================================================
+                REPORT
+                ================================================= */}
+
             <DownloadReport
               data={data}
             />
 
-            {/* ANALYTICS */}
+            {/* =================================================
+                ANALYTICS
+                ================================================= */}
+
             <AttackAnalytics
-              data={data}
-              history={analysisHistory}
+              logs={analysisHistory}
+              analysisHistory={analysisHistory}
             />
 
-            {/* ATTACK DISTRIBUTION */}
+            {/* =================================================
+                ATTACK DISTRIBUTION
+                ================================================= */}
+
             <AttackChart
-              data={data}
-              history={analysisHistory}
+              data={attackDistribution}
             />
 
-            {/* CONFIDENCE HISTORY */}
+            {/* =================================================
+                CONFIDENCE HISTORY
+                ================================================= */}
+
             <ConfidenceChart
               data={analysisHistory}
             />
 
-            {/* RECENT DETECTIONS */}
+            {/* =================================================
+                RECENT DETECTIONS
+                ================================================= */}
+
             <RecentLogs
               logs={analysisHistory}
             />
+
           </>
         )}
+
       </main>
     </div>
   );
