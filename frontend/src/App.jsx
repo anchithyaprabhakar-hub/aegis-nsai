@@ -10,7 +10,6 @@ import {
   FaNetworkWired,
 } from "react-icons/fa";
 
-import Header from "./components/Header";
 import FileUpload from "./components/FileUpload";
 import PredictionCard from "./components/PredictionCard";
 import ConfidenceBar from "./components/ConfidenceBar";
@@ -25,141 +24,71 @@ import RecentLogs from "./components/RecentLogs";
 
 import "./App.css";
 
-
 function App() {
-  /* =========================================================
-     STATE
-  ========================================================= */
-
   const [data, setData] = useState(null);
   const [analysisHistory, setAnalysisHistory] = useState([]);
 
-
-  /* =========================================================
-     LOAD PREVIOUS ANALYSIS HISTORY
-  ========================================================= */
-
   useEffect(() => {
     try {
-      const stored = localStorage.getItem(
-        "aegis_analysis_history"
-      );
+      const savedHistory = localStorage.getItem("aegis-analysis-history");
 
-      if (!stored) {
-        return;
-      }
-
-      const parsed = JSON.parse(stored);
-
-      if (Array.isArray(parsed)) {
-        setAnalysisHistory(parsed);
+      if (savedHistory) {
+        setAnalysisHistory(JSON.parse(savedHistory));
       }
     } catch (error) {
-      console.error(
-        "Unable to load analysis history:",
-        error
-      );
+      console.error("Failed to load analysis history:", error);
     }
   }, []);
-
-
-  /* =========================================================
-     SAVE HISTORY
-  ========================================================= */
 
   useEffect(() => {
     try {
       localStorage.setItem(
-        "aegis_analysis_history",
+        "aegis-analysis-history",
         JSON.stringify(analysisHistory)
       );
     } catch (error) {
-      console.error(
-        "Unable to save analysis history:",
-        error
-      );
+      console.error("Failed to save analysis history:", error);
     }
   }, [analysisHistory]);
 
-
-  /* =========================================================
-     HANDLE NEW ANALYSIS
-  ========================================================= */
-
   const handlePrediction = (result) => {
-    if (!result || !result.prediction) {
-      console.error(
-        "Invalid prediction result:",
-        result
-      );
-      return;
-    }
+    const analysisTimestamp = new Date();
 
-    const normalizedPrediction =
-      String(result.prediction).trim();
+    const detectionTime = analysisTimestamp.toLocaleTimeString("en-GB", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    });
 
-    const confidence =
-      Number(result.confidence) || 0;
-
-    /*
-      Capture the exact time when this analysis completes.
-
-      This timestamp is stored inside the result and does NOT
-      update every second after the analysis is finished.
-    */
-    const analysisTimestamp =
-      new Date().toLocaleTimeString("en-GB", {
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: false,
-      });
-
-    const filename =
-      result.filename || "Uploaded CSV";
-
-    const threatLevel =
-      normalizedPrediction === "Normal"
-        ? "Low"
-        : confidence >= 80
-        ? "Critical"
-        : confidence >= 60
-        ? "High"
-        : confidence >= 30
-        ? "Medium"
-        : "Low";
-
-    /*
-      Preserve the backend result while adding a fixed
-      detection timestamp for the current analysis.
-    */
     const analysisResult = {
       ...result,
       detection_time:
-        result.detection_time ||
-        result.analysis_time ||
-        analysisTimestamp,
-    };
-
-    const historyItem = {
-      id: `DET-${String(
-        analysisHistory.length + 1
-      ).padStart(3, "0")}`,
-
-      prediction: normalizedPrediction,
-
-      confidence,
-
-      filename,
-
-      timestamp: analysisResult.detection_time,
-
-      threatLevel,
-
-      status: "ANALYZED",
+        result?.detection_time ||
+        result?.analysis_time ||
+        detectionTime,
     };
 
     setData(analysisResult);
+
+    const historyItem = {
+      id: `DET-${String(analysisHistory.length + 1).padStart(3, "0")}`,
+      prediction:
+        analysisResult?.prediction ||
+        analysisResult?.final_prediction ||
+        "Unknown",
+      confidence:
+        analysisResult?.confidence ??
+        analysisResult?.ml_confidence ??
+        0,
+      source:
+        analysisResult?.filename ||
+        analysisResult?.file_name ||
+        "CSV Upload",
+      time: detectionTime,
+      timestamp: analysisTimestamp.toISOString(),
+      result: analysisResult,
+    };
 
     setAnalysisHistory((previous) => [
       ...previous,
@@ -167,582 +96,392 @@ function App() {
     ]);
   };
 
-
-  /* =========================================================
-     RESET ANALYSIS
-  ========================================================= */
-
   const handleReset = () => {
     setData(null);
   };
 
-
-  /* =========================================================
-     DERIVED VALUES
-  ========================================================= */
-
   const prediction =
-    data?.prediction
-      ? String(data.prediction).trim()
-      : "";
+    data?.prediction ||
+    data?.final_prediction ||
+    data?.classification ||
+    "No Analysis";
 
   const confidence =
-    Number(data?.confidence) || 0;
+    Number(
+      data?.confidence ??
+        data?.ml_confidence ??
+        data?.prediction_confidence ??
+        0
+    ) || 0;
 
   const isNormal =
-    prediction === "Normal";
+    prediction === "Normal" ||
+    prediction === "BENIGN" ||
+    prediction === "Benign";
 
-  const totalAnalyses =
-    analysisHistory.length;
-
-
-  /* =========================================================
-     THREAT LEVEL
-  ========================================================= */
+  const totalAnalyses = analysisHistory.length;
 
   const threatLevel = useMemo(() => {
     if (!data || isNormal) {
       return "Low";
     }
 
-    if (confidence >= 80) {
+    if (confidence >= 90) {
       return "Critical";
     }
 
-    if (confidence >= 60) {
+    if (confidence >= 70) {
       return "High";
     }
 
-    if (confidence >= 30) {
-      return "Medium";
-    }
+    return "Medium";
+  }, [data, isNormal, confidence]);
 
-    return "Low";
-  }, [
-    data,
-    isNormal,
-    confidence,
-  ]);
-
-
-  /* =========================================================
-     RISK SCORE
-  ========================================================= */
-
-  const riskScore =
-    isNormal
-      ? 0
-      : Math.round(confidence);
-
-
-  /* =========================================================
-     ATTACK DESCRIPTION
-  ========================================================= */
+  const riskScore = isNormal
+    ? 0
+    : Math.min(100, Math.max(0, Math.round(confidence)));
 
   const attackDescription =
     data?.attack_description ||
     data?.description ||
-    (
-      isNormal
-        ? "Normal network activity with no malicious behaviour detected."
-        : `The detected traffic has been classified as ${prediction} based on learned network behaviour and symbolic rule evaluation.`
-    );
+    (isNormal
+      ? "The analyzed network traffic does not show strong evidence of a known intrusion pattern."
+      : `The system detected traffic associated with ${prediction}. The result combines machine-learning prediction with symbolic security evidence.`);
 
-
-  /* =========================================================
-     DETECTION TIME
-  ========================================================= */
-
-  /*
-    This value is fixed for the current analysis.
-
-    It comes from:
-    1. Backend detection_time
-    2. Backend analysis_time
-    3. Timestamp captured when handlePrediction() completed
-
-    There is NO live clock updating this value.
-  */
   const detectionTime =
     data?.detection_time ||
     data?.analysis_time ||
     "--:--:--";
 
-
-  /* =========================================================
-     SYMBOLIC VALUES
-  ========================================================= */
-
   const symbolicConfidence =
     Number(
       data?.symbolic_confidence ??
-      data?.symbolic_support ??
-      0
+        data?.symbolic_support ??
+        data?.rule_support ??
+        0
     ) || 0;
 
-  const symbolicSupport =
-    Number(
-      data?.symbolic_support ??
-      data?.symbolic_confidence ??
-      0
-    ) || 0;
-
-  const symbolicExplanation =
-    data?.symbolic_explanation ||
-    (
-      isNormal
-        ? "Network traffic appears normal with no strong symbolic indicators of malicious activity."
-        : "Symbolic rules provide behavioural evidence associated with the detected network activity."
-    );
-
-
-  /* =========================================================
-     KNOWLEDGE GRAPH DATA
-  ========================================================= */
+  const explanation =
+    data?.explanation ||
+    data?.ai_explanation ||
+    "The prediction is generated using the neuro-symbolic detection pipeline.";
 
   const knowledgeGraph =
-    Array.isArray(data?.knowledge_graph)
+    Array.isArray(data?.knowledge_graph) && data.knowledge_graph.length > 0
       ? data.knowledge_graph
       : isNormal
       ? [
-          "Normal Traffic",
-          "No Malicious Activity",
+          "Network Traffic",
+          "Normal Behaviour",
+          "No Strong Attack Pattern",
+          "Security Context",
         ]
       : [
-          "Detected Threat",
-          "Suspicious Network Activity",
+          "Network Traffic",
+          prediction,
+          "Behavioural Indicators",
+          "Security Context",
         ];
 
-
-  /* =========================================================
-     CURRENT ANALYSIS INFORMATION
-  ========================================================= */
-
   const rowsProcessed =
-    Number(
-      data?.rows_processed ??
-      data?.symbolic_rows_evaluated ??
-      0
-    ) || 0;
+    data?.rows_processed ??
+    data?.total_rows ??
+    data?.rows ??
+    0;
 
   const analysisType =
     data?.analysis_type ||
-    "Dataset-level network-flow analysis";
-
-
-  /* =========================================================
-     MAIN UI
-  ========================================================= */
+    data?.analysis_mode ||
+    "CSV Network Traffic Analysis";
 
   return (
     <div className="app">
-
-      {/* =====================================================
-          SYSTEM HEADER
-      ===================================================== */}
-
-      <Header
-        totalAnalyses={totalAnalyses}
-      />
-
-
-      {/* =====================================================
-          MAIN CONTENT
-      ===================================================== */}
-
       <main className="main-content">
+        {/* SYSTEM STATUS */}
+        <section className="system-status-card">
+          <div className="system-status-left">
+            <div className="system-online-dot"></div>
 
-        {/* ===================================================
-            HERO
-        =================================================== */}
+            <div>
+              <div className="system-title">
+                <FaDatabase />
+                <span>System Online</span>
+              </div>
 
+              <div className="system-analysis-count">
+                Total Analyses:
+                <strong>{totalAnalyses}</strong>
+              </div>
+            </div>
+          </div>
+
+          <div className="system-status-right">
+            <div className="ai-engine-label">AI ENGINE</div>
+
+            <div className="ai-engine-status">
+              <FaBrain />
+              <span>ACTIVE</span>
+            </div>
+          </div>
+
+          <div className="system-time">
+            <div className="system-date">
+              {new Date().toLocaleDateString("en-GB")}
+            </div>
+
+            <div className="system-clock">
+              {new Date().toLocaleTimeString("en-GB", {
+                hour12: false,
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* HERO */}
         <section
-          className="hero-section landing-hero"
+          className="hero"
           style={{
-            minHeight: "320px",
-            height: "320px",
-            padding: "20px 20px 25px",
-            justifyContent: "center",
+            height: "220px",
+            minHeight: "220px",
           }}
         >
-
-          <div
-            className="hero-icon"
-            style={{
-              fontSize: "34px",
-              marginBottom: "10px",
-            }}
-          >
+          <div className="hero-icon">
             <FaShieldAlt />
           </div>
 
-          <h1 style={{ margin: 0 }}>
-            AEGIS-NSAI
-          </h1>
+          <h1>AEGIS-NSAI</h1>
 
-          <p style={{ margin: "16px 0 0" }}>
-            Neuro-Symbolic Intrusion Detection System
-          </p>
+          <p>Neuro-Symbolic Intrusion Detection System</p>
 
-          <div
-            className="version-badge"
-            style={{
-              marginTop: "16px",
-            }}
-          >
-            Version 1.0 · CSV Network Analysis
-          </div>
-
+          <span>Version 1.0 · CSV Network Analysis</span>
         </section>
 
+        {/* FILE UPLOAD */}
+        <FileUpload
+          onPrediction={handlePrediction}
+          onReset={handleReset}
+        />
 
-        {/* ===================================================
-            CSV UPLOAD
-        =================================================== */}
-
-        <section
-          className="dashboard-section upload-section"
-          style={{
-            marginTop: "0",
-            marginBottom: "25px",
-          }}
-        >
-
-          <FileUpload
-            onPrediction={handlePrediction}
-            onReset={handleReset}
-          />
-
-        </section>
-
-
-        {/* ===================================================
-            ANALYSIS RESULTS
-        =================================================== */}
-
+        {/* CURRENT ANALYSIS */}
         {data && (
           <>
-
-            {/* ===============================================
-                CURRENT ANALYSIS
-            =============================================== */}
-
             <section className="current-analysis-card">
+              <div className="current-analysis-header">
+                <div>
+                  <div className="section-eyebrow">
+                    CURRENT ANALYSIS
+                  </div>
 
-              <div className="section-title">
-                CURRENT ANALYSIS
+                  <h2>
+                    <FaNetworkWired />
+                    Network Traffic Assessment
+                  </h2>
+                </div>
+
+                <div className="analysis-status">
+                  <span className="status-dot"></span>
+                  ANALYSIS COMPLETE
+                </div>
               </div>
 
-              <div className="current-file-name">
-                {data.filename ||
-                  "Uploaded Network Traffic"}
-              </div>
+              <div className="analysis-meta">
+                <span>
+                  <FaClock />
+                  {detectionTime}
+                </span>
 
-              <div className="current-file-meta">
-                {rowsProcessed.toLocaleString()}{" "}
-                network-flow rows analyzed
-              </div>
+                <span>
+                  <FaDatabase />
+                  {rowsProcessed.toLocaleString()} rows
+                </span>
 
+                <span>
+                  <FaProjectDiagram />
+                  {analysisType}
+                </span>
+              </div>
             </section>
 
-
-            {/* ===============================================
-                SUMMARY CARDS
-            =============================================== */}
-
+            {/* SUMMARY CARDS */}
             <section className="summary-grid">
+              <div className="summary-card">
+                <div className="summary-card-icon">
+                  <FaShieldAlt />
+                </div>
 
-              {/* AI ENGINE */}
+                <div>
+                  <div className="summary-card-label">
+                    DETECTION
+                  </div>
 
-              <div className="summary-card ai-card">
+                  <div className="summary-card-value">
+                    {prediction}
+                  </div>
+                </div>
+              </div>
 
-                <div className="summary-card-header">
-                  <span>AI ENGINE</span>
+              <div className="summary-card">
+                <div className="summary-card-icon">
                   <FaBrain />
                 </div>
 
-                <div className="summary-value ai-value">
-                  Neuro-
-                  <br />
-                  Symbolic
-                </div>
+                <div>
+                  <div className="summary-card-label">
+                    CONFIDENCE
+                  </div>
 
+                  <div className="summary-card-value">
+                    {confidence.toFixed(2)}%
+                  </div>
+                </div>
               </div>
 
-
-              {/* RISK SCORE */}
-
               <div className="summary-card">
-
-                <div className="summary-card-header">
-                  <span>RISK SCORE</span>
-                  <FaProjectDiagram />
-                </div>
-
-                <div
-                  className={`summary-value ${
-                    isNormal
-                      ? "risk-normal"
-                      : "risk-danger"
-                  }`}
-                >
-                  {riskScore}/100
-                </div>
-
-              </div>
-
-
-              {/* DETECTION TIME */}
-
-              <div className="summary-card">
-
-                <div className="summary-card-header">
-                  <span>DETECTION TIME</span>
-                  <FaClock />
-                </div>
-
-                <div className="summary-value time-value">
-                  {detectionTime}
-                </div>
-
-              </div>
-
-
-              {/* THREAT LEVEL */}
-
-              <div className="summary-card">
-
-                <div className="summary-card-header">
-                  <span>THREAT LEVEL</span>
+                <div className="summary-card-icon">
                   <FaExclamationTriangle />
                 </div>
 
-                <div
-                  className={`summary-value ${
-                    threatLevel === "Low"
-                      ? "threat-low"
-                      : threatLevel === "Medium"
-                      ? "threat-medium"
-                      : threatLevel === "High"
-                      ? "threat-high"
-                      : "threat-critical"
-                  }`}
-                >
-                  {threatLevel}
-                </div>
+                <div>
+                  <div className="summary-card-label">
+                    THREAT LEVEL
+                  </div>
 
+                  <div className="summary-card-value">
+                    {threatLevel}
+                  </div>
+                </div>
               </div>
 
+              <div className="summary-card">
+                <div className="summary-card-icon">
+                  <FaProjectDiagram />
+                </div>
 
-              {/* ROWS ANALYZED */}
+                <div>
+                  <div className="summary-card-label">
+                    RISK SCORE
+                  </div>
+
+                  <div className="summary-card-value">
+                    {riskScore}/100
+                  </div>
+                </div>
+              </div>
 
               <div className="summary-card">
+                <div className="summary-card-icon">
+                  <FaBrain />
+                </div>
 
-                <div className="summary-card-header">
-                  <span>ROWS ANALYZED</span>
+                <div>
+                  <div className="summary-card-label">
+                    SYMBOLIC SUPPORT
+                  </div>
+
+                  <div className="summary-card-value">
+                    {symbolicConfidence.toFixed(2)}%
+                  </div>
+                </div>
+              </div>
+
+              <div className="summary-card">
+                <div className="summary-card-icon">
                   <FaDatabase />
                 </div>
 
-                <div className="summary-value time-value">
-                  {rowsProcessed.toLocaleString()}
-                </div>
+                <div>
+                  <div className="summary-card-label">
+                    ROWS PROCESSED
+                  </div>
 
+                  <div className="summary-card-value">
+                    {Number(rowsProcessed).toLocaleString()}
+                  </div>
+                </div>
               </div>
-
-
-              {/* ANALYSIS TYPE */}
-
-              <div className="summary-card">
-
-                <div className="summary-card-header">
-                  <span>ANALYSIS TYPE</span>
-                  <FaNetworkWired />
-                </div>
-
-                <div
-                  className="summary-value"
-                  style={{
-                    fontSize: "20px",
-                    lineHeight: "1.3",
-                  }}
-                >
-                  {analysisType}
-                </div>
-
-              </div>
-
             </section>
 
-
-            {/* ===============================================
-                PREDICTION + CONFIDENCE
-            =============================================== */}
-
+            {/* PREDICTION + CONFIDENCE */}
             <section className="result-two-column">
-
               <PredictionCard
                 prediction={prediction}
                 confidence={confidence}
-                threatLevel={threatLevel}
               />
 
               <ConfidenceBar
                 confidence={confidence}
-                prediction={prediction}
               />
-
             </section>
 
+            {/* AI EXPLANATION */}
+            <ExplanationCard
+              prediction={prediction}
+              confidence={confidence}
+              explanation={explanation}
+              data={data}
+            />
 
-            {/* ===============================================
-                AI EXPLANATION
-            =============================================== */}
+            {/* KNOWLEDGE GRAPH */}
+            <KnowledgeGraph
+              graph={knowledgeGraph}
+              prediction={prediction}
+            />
 
-            <section className="dashboard-section">
+            {/* ATTACK DESCRIPTION */}
+            <section className="info-card attack-description-card">
+              <div className="info-card-header">
+                <div className="info-card-icon">
+                  <FaExclamationTriangle />
+                </div>
 
-              <ExplanationCard
-                prediction={prediction}
-                confidence={confidence}
-                message={data.message || ""}
-                symbolicConfidence={
-                  symbolicConfidence
-                }
-                symbolicSupport={
-                  symbolicSupport
-                }
-                symbolicExplanation={
-                  symbolicExplanation
-                }
-              />
+                <div>
+                  <div className="section-eyebrow">
+                    ATTACK DESCRIPTION
+                  </div>
 
+                  <h2>{prediction}</h2>
+                </div>
+              </div>
+
+              <p>{attackDescription}</p>
             </section>
 
+            {/* RECOMMENDATIONS */}
+            <ThreatRecommendation
+              prediction={prediction}
+              confidence={confidence}
+              data={data}
+            />
 
-            {/* ===============================================
-                KNOWLEDGE GRAPH
-            =============================================== */}
+            {/* REPORT */}
+            <DownloadReport
+              data={data}
+            />
 
-            <section className="dashboard-section">
+            {/* ANALYTICS */}
+            <AttackAnalytics
+              data={data}
+              history={analysisHistory}
+            />
 
-              <KnowledgeGraph
-                graph={knowledgeGraph}
-                prediction={prediction}
-              />
+            {/* ATTACK DISTRIBUTION */}
+            <AttackChart
+              data={data}
+              history={analysisHistory}
+            />
 
-            </section>
+            {/* CONFIDENCE HISTORY */}
+            <ConfidenceChart
+              data={analysisHistory}
+            />
 
-
-            {/* ===============================================
-                ATTACK DESCRIPTION
-            =============================================== */}
-
-            <section className="dashboard-card attack-description">
-
-              <h2>
-                ATTACK DESCRIPTION
-              </h2>
-
-              <p>
-                {attackDescription}
-              </p>
-
-            </section>
-
-
-            {/* ===============================================
-                RECOMMENDED ACTIONS
-            =============================================== */}
-
-            <section className="dashboard-section">
-
-              <ThreatRecommendation
-                prediction={prediction}
-                confidence={confidence}
-                threatLevel={threatLevel}
-              />
-
-            </section>
-
-
-            {/* ===============================================
-                PDF REPORT
-            =============================================== */}
-
-            <section className="dashboard-section">
-
-              <DownloadReport
-                data={data}
-                prediction={prediction}
-                confidence={confidence}
-                threatLevel={threatLevel}
-                riskScore={riskScore}
-                symbolicConfidence={
-                  symbolicConfidence
-                }
-                symbolicSupport={
-                  symbolicSupport
-                }
-              />
-
-            </section>
-
-
-            {/* ===============================================
-                ATTACK ANALYTICS
-            =============================================== */}
-
-            <section className="dashboard-section">
-
-              <AttackAnalytics
-                logs={analysisHistory}
-              />
-
-            </section>
-
-
-            {/* ===============================================
-                ATTACK DISTRIBUTION
-            =============================================== */}
-
-            <section className="dashboard-section">
-
-              <AttackChart
-                logs={analysisHistory}
-              />
-
-            </section>
-
-
-            {/* ===============================================
-                CONFIDENCE CHART
-            =============================================== */}
-
-            <section className="dashboard-section">
-
-              <ConfidenceChart
-                data={analysisHistory}
-              />
-
-            </section>
-
-
-            {/* ===============================================
-                RECENT DETECTIONS
-            =============================================== */}
-
-            <section className="dashboard-section">
-
-              <RecentLogs
-                logs={analysisHistory}
-              />
-
-            </section>
-
+            {/* RECENT DETECTIONS */}
+            <RecentLogs
+              logs={analysisHistory}
+            />
           </>
         )}
-
       </main>
-
     </div>
   );
 }
