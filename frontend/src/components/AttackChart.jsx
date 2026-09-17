@@ -12,7 +12,28 @@ import {
   Legend,
 } from "recharts";
 
+/* =========================================================
+   AEGIS-NSAI ATTACK DISTRIBUTION
+   ========================================================= */
+
+const COLORS = [
+  "#38bdf8",
+  "#f43f5e",
+  "#f59e0b",
+  "#a78bfa",
+  "#22c55e",
+  "#22d3ee",
+  "#fb7185",
+  "#c084fc",
+  "#facc15",
+  "#4ade80",
+];
+
 function AttackChart({ data = [] }) {
+  /* =========================================================
+     NORMALIZE DATA
+     ========================================================= */
+
   const chartData = Array.isArray(data)
     ? data
         .map((item) => {
@@ -33,9 +54,9 @@ function AttackChart({ data = [] }) {
             value:
               Number(
                 item?.value ??
-                item?.count ??
-                item?.percentage ??
-                0
+                  item?.count ??
+                  item?.percentage ??
+                  0
               ) || 0,
           };
         })
@@ -46,100 +67,107 @@ function AttackChart({ data = [] }) {
         )
     : [];
 
+  /* =========================================================
+     TOTAL
+     ========================================================= */
+
   const total = chartData.reduce(
-    (sum, item) => sum + item.value,
+    (sum, item) =>
+      sum + Number(item.value || 0),
     0
   );
 
-  const getPercentage = (value) => {
-    if (!total) return 0;
+  /* =========================================================
+     PERCENTAGE
+     ========================================================= */
 
-    return ((value / total) * 100).toFixed(1);
+  const getPercentage = (value) => {
+    if (!total) {
+      return "0.0";
+    }
+
+    return (
+      (Number(value) / total) *
+      100
+    ).toFixed(1);
   };
+
+  /* =========================================================
+     TOOLTIP
+     ========================================================= */
 
   const tooltipFormatter = (value) => {
     const numericValue =
       Number(value) || 0;
 
     return [
-      `${numericValue.toLocaleString()} (${getPercentage(
-        numericValue
-      )}%)`,
-      "Detections",
+      `${numericValue.toLocaleString()} detections`,
+      `${getPercentage(numericValue)}%`,
     ];
   };
+
+  /* =========================================================
+     RENDER
+     ========================================================= */
 
   return (
     <div className="info-card attack-chart-card">
 
-      <div
-        className="attack-chart-header"
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          textAlign: "center",
-        }}
-      >
+      {/* =====================================================
+          HEADER
+          ===================================================== */}
 
-        <div
-          className="attack-chart-heading"
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            textAlign: "center",
-            width: "100%",
-          }}
-        >
+      <div className="attack-chart-header">
+
+        <div className="attack-chart-heading">
 
           <div className="attack-chart-icon">
             <FaChartPie />
           </div>
 
-          <div
-            style={{
-              width: "100%",
-              textAlign: "center",
-            }}
-          >
+          <div>
+
             <h3>
               Attack Distribution
             </h3>
 
             <p>
-              Distribution of detected network
-              activities in the current analysis.
+              Classification distribution across
+              analyzed network traffic.
             </p>
+
           </div>
 
         </div>
 
         {total > 0 && (
-          <div
-            className="attack-chart-total"
-            style={{
-              textAlign: "center",
-            }}
-          >
+          <div className="attack-chart-total">
             {total.toLocaleString()}{" "}
-            Total
+            Total Detections
           </div>
         )}
 
       </div>
 
+      {/* =====================================================
+          CHART
+          ===================================================== */}
+
       {chartData.length > 0 ? (
+
         <div className="attack-chart-layout">
+
+          {/* =================================================
+              DONUT
+              ================================================= */}
 
           <div className="attack-chart-container">
 
             <ResponsiveContainer
               width="100%"
-              height={380}
+              height={390}
             >
+
               <PieChart>
 
                 <Pie
@@ -147,102 +175,185 @@ function AttackChart({ data = [] }) {
                   dataKey="value"
                   nameKey="name"
                   cx="50%"
-                  cy="50%"
+                  cy="47%"
                   outerRadius={135}
-                  innerRadius={72}
-                  paddingAngle={2}
-                  stroke="#101010"
-                  strokeWidth={2}
+                  innerRadius={78}
+                  paddingAngle={3}
+                  stroke="#0b0b0b"
+                  strokeWidth={3}
                 >
 
                   {chartData.map(
                     (entry, index) => (
                       <Cell
-                        key={`cell-${index}`}
+                        key={`${entry.name}-${index}`}
+                        fill={
+                          COLORS[
+                            index %
+                              COLORS.length
+                          ]
+                        }
                       />
                     )
                   )}
 
                 </Pie>
 
+                {/* CENTER VALUE */}
+
+                <text
+                  x="50%"
+                  y="44%"
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fill="#f5f5f5"
+                  fontSize="30"
+                  fontWeight="800"
+                >
+                  {total.toLocaleString()}
+                </text>
+
+                <text
+                  x="50%"
+                  y="52%"
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fill="#777777"
+                  fontSize="11"
+                  fontWeight="700"
+                >
+                  DETECTIONS
+                </text>
+
+                {/* TOOLTIP */}
+
                 <Tooltip
                   formatter={
                     tooltipFormatter
                   }
+
                   contentStyle={{
-                    background: "#151515",
+                    background:
+                      "#151515",
                     border:
-                      "1px solid #303030",
-                    borderRadius: "10px",
-                    color: "#f5f5f5",
+                      "1px solid #383838",
+                    borderRadius:
+                      "12px",
+                    color:
+                      "#f5f5f5",
+                    boxShadow:
+                      "0 10px 30px rgba(0,0,0,0.45)",
                   }}
+
                   labelStyle={{
                     color: "#f5f5f5",
+                    fontWeight: 700,
+                    marginBottom: "5px",
+                  }}
+
+                  itemStyle={{
+                    color: "#38bdf8",
                   }}
                 />
 
+                {/* LEGEND */}
+
                 <Legend
                   verticalAlign="bottom"
-                  height={36}
+                  height={45}
                   iconType="circle"
+
                   wrapperStyle={{
                     color: "#a3a3a3",
                     fontSize: "12px",
+                    paddingTop: "10px",
                   }}
                 />
 
               </PieChart>
+
             </ResponsiveContainer>
 
           </div>
 
+          {/* =================================================
+              BREAKDOWN
+              ================================================= */}
+
           <div className="attack-breakdown">
 
             <div className="attack-breakdown-header">
+
               <FaShieldAlt />
 
               <span>
                 Detection Breakdown
               </span>
+
             </div>
 
             <div className="attack-breakdown-list">
 
               {chartData.map(
-                (item, index) => (
-                  <div
-                    className="attack-breakdown-item"
-                    key={`${item.name}-${index}`}
-                  >
+                (item, index) => {
 
-                    <div className="attack-breakdown-name">
+                  const percentage =
+                    getPercentage(
+                      item.value
+                    );
 
-                      <span className="attack-breakdown-dot" />
+                  const itemColor =
+                    COLORS[
+                      index %
+                        COLORS.length
+                    ];
 
-                      <span>
-                        {item.name}
-                      </span>
+                  return (
+                    <div
+                      className="attack-breakdown-item"
+                      key={`${item.name}-${index}`}
+                    >
+
+                      <div className="attack-breakdown-name">
+
+                        <span
+                          className="attack-breakdown-dot"
+                          style={{
+                            background:
+                              itemColor,
+                            boxShadow:
+                              `0 0 10px ${itemColor}66`,
+                          }}
+                        />
+
+                        <span>
+                          {item.name}
+                        </span>
+
+                      </div>
+
+                      <div className="attack-breakdown-value">
+
+                        <strong>
+                          {Number(
+                            item.value
+                          ).toLocaleString()}
+                        </strong>
+
+                        <span
+                          style={{
+                            color:
+                              itemColor,
+                          }}
+                        >
+                          {percentage}%
+                        </span>
+
+                      </div>
 
                     </div>
-
-                    <div className="attack-breakdown-value">
-
-                      <strong>
-                        {Number(
-                          item.value
-                        ).toLocaleString()}
-                      </strong>
-
-                      <span>
-                        {getPercentage(
-                          item.value
-                        )}%
-                      </span>
-
-                    </div>
-
-                  </div>
-                )
+                  );
+                }
               )}
 
             </div>
@@ -250,10 +361,18 @@ function AttackChart({ data = [] }) {
           </div>
 
         </div>
+
       ) : (
+
+        /* ===================================================
+           EMPTY STATE
+           =================================================== */
+
         <div className="attack-chart-empty">
 
-          <FaChartPie />
+          <div className="attack-chart-empty-icon">
+            <FaChartPie />
+          </div>
 
           <strong>
             No Attack Distribution Data
@@ -265,6 +384,7 @@ function AttackChart({ data = [] }) {
           </p>
 
         </div>
+
       )}
 
     </div>
