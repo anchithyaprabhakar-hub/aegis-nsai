@@ -12,7 +12,7 @@ function ConfidenceBar({ confidence, prediction }) {
       color = "#22c55e";
       level = "High";
       description =
-        "The AI model is highly confident that this traffic represents normal network behaviour.";
+        "The AI model is highly confident in the Normal classification based on learned network-traffic patterns.";
     } else if (confidence >= 60) {
       color = "#22c55e";
       level = "Moderate";
@@ -29,17 +29,17 @@ function ConfidenceBar({ confidence, prediction }) {
       color = "#ef4444";
       level = "Critical";
       description =
-        "The AI model is highly confident that this traffic represents malicious activity.";
+        `The AI model is highly confident in the ${normalizedPrediction || "detected"} classification based on learned network-traffic patterns.`;
     } else if (confidence >= 60) {
       color = "#f97316";
       level = "High";
       description =
-        "The prediction indicates strong evidence of suspicious network behaviour.";
+        `The prediction indicates strong evidence for the ${normalizedPrediction || "detected"} classification.`;
     } else if (confidence >= 30) {
       color = "#facc15";
       level = "Medium";
       description =
-        "The prediction shows moderate confidence. Further investigation is recommended.";
+        `The prediction shows moderate confidence in the ${normalizedPrediction || "detected"} classification. Further investigation is recommended.`;
     }
   }
 

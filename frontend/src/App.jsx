@@ -574,6 +574,7 @@ function App() {
 
               <ConfidenceBar
                 confidence={confidence}
+                prediction={prediction}
               />
 
             </section>
