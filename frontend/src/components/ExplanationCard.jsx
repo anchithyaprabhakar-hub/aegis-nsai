@@ -5,7 +5,6 @@ import {
   FaCheckCircle,
 } from "react-icons/fa";
 
-
 function ExplanationCard({
   prediction,
   confidence,
@@ -18,14 +17,18 @@ function ExplanationCard({
     Number(confidence) || 0;
 
   /*
-   * Symbolic support represents behavioural/rule evidence.
-   * It is not a statistical probability.
+   * Attack rule support represents direct evidence produced by
+   * attack-specific symbolic rules.
+   *
+   * This is different from the overall "Symbolic Support"
+   * metric shown in the dashboard summary cards.
+   *
+   * It is behavioural rule evidence, not a statistical probability.
    */
-  const symbolicEvidence =
+  const attackRuleSupport =
     Number(
       symbolicSupport ?? symbolicConfidence
     ) || 0;
-
 
   /* =========================================================
      HELPERS
@@ -35,10 +38,9 @@ function ExplanationCard({
     prediction === "Normal" ||
     prediction === "Benign";
 
-
   const getDecisionSummary = () => {
     if (
-      symbolicEvidence > 0 &&
+      attackRuleSupport > 0 &&
       !isNormal
     ) {
       return (
@@ -50,8 +52,8 @@ function ExplanationCard({
     if (isNormal) {
       return (
         "The uploaded traffic was classified as normal network behaviour. "
-        + "Symbolic rules did not provide sufficient attack support to "
-        + "override the neural prediction."
+        + "Attack-specific symbolic rules did not provide sufficient "
+        + "evidence to indicate an intrusion."
       );
     }
 
@@ -61,7 +63,6 @@ function ExplanationCard({
     );
   };
 
-
   const getDetectionClass = () => {
     if (isNormal) {
       return "normal";
@@ -69,7 +70,6 @@ function ExplanationCard({
 
     return "threat";
   };
-
 
   /* =========================================================
      RENDER
@@ -118,10 +118,9 @@ function ExplanationCard({
 
       </div>
 
-
       {/* =====================================================
           FINAL DETECTION
-      ===================================================== */}
+          ===================================================== */}
 
       <div
         style={{
@@ -146,7 +145,6 @@ function ExplanationCard({
           Final Detection
         </div>
 
-
         <div
           className={getDetectionClass()}
           style={{
@@ -160,7 +158,6 @@ function ExplanationCard({
         >
           {prediction || "Unknown"}
         </div>
-
 
         <p
           style={{
@@ -176,10 +173,9 @@ function ExplanationCard({
 
       </div>
 
-
       {/* =====================================================
           NEURO-SYMBOLIC EVIDENCE
-      ===================================================== */}
+          ===================================================== */}
 
       <div
         style={{
@@ -232,7 +228,6 @@ function ExplanationCard({
 
           </div>
 
-
           <div
             style={{
               marginTop: "12px",
@@ -245,7 +240,6 @@ function ExplanationCard({
             {mlConfidence.toFixed(2)}%
           </div>
 
-
           <div
             style={{
               marginTop: "8px",
@@ -254,13 +248,13 @@ function ExplanationCard({
             }}
           >
             Model confidence
+
           </div>
 
         </div>
 
-
         {/* ---------------------------------------------------
-            SYMBOLIC RULES
+            ATTACK RULE SUPPORT
         --------------------------------------------------- */}
 
         <div
@@ -296,10 +290,9 @@ function ExplanationCard({
               }}
             />
 
-            Symbolic Rule Evidence
+            Attack Rule Support
 
           </div>
-
 
           <div
             style={{
@@ -310,9 +303,8 @@ function ExplanationCard({
               fontWeight: "800",
             }}
           >
-            {symbolicEvidence.toFixed(2)}%
+            {attackRuleSupport.toFixed(2)}%
           </div>
-
 
           <div
             style={{
@@ -321,17 +313,17 @@ function ExplanationCard({
               fontSize: "12px",
             }}
           >
-            Behavioural rule evidence
+            Direct attack-rule evidence
+
           </div>
 
         </div>
 
       </div>
 
-
       {/* =====================================================
           REASONING + DECISION
-      ===================================================== */}
+          ===================================================== */}
 
       {(symbolicExplanation || message) && (
         <div
@@ -348,7 +340,7 @@ function ExplanationCard({
 
           {/* -------------------------------------------------
               SYMBOLIC REASONING
-          ------------------------------------------------- */}
+              ------------------------------------------------- */}
 
           {symbolicExplanation && (
             <div
@@ -386,7 +378,6 @@ function ExplanationCard({
 
               </div>
 
-
               <p
                 style={{
                   margin: "14px 0 0",
@@ -402,10 +393,9 @@ function ExplanationCard({
             </div>
           )}
 
-
           {/* -------------------------------------------------
               NEURO-SYMBOLIC DECISION
-          ------------------------------------------------- */}
+              ------------------------------------------------- */}
 
           {message && (
             <div
@@ -443,7 +433,6 @@ function ExplanationCard({
 
               </div>
 
-
               <p
                 style={{
                   margin: "14px 0 0",
@@ -462,10 +451,9 @@ function ExplanationCard({
         </div>
       )}
 
-
       {/* =====================================================
           EXPLANATION FOOTER
-      ===================================================== */}
+          ===================================================== */}
 
       <div
         style={{
@@ -501,6 +489,5 @@ function ExplanationCard({
     </div>
   );
 }
-
 
 export default ExplanationCard;
