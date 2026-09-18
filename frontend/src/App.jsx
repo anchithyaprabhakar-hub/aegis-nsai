@@ -68,26 +68,63 @@ function App() {
   }, [analysisHistory]);
 
   /* =========================================================
+     FORMAT DISPLAY TIME
+     ========================================================= */
+
+  const formatDetectionTime = (value) => {
+    if (!value) {
+      return "--:--:--";
+    }
+
+    const parsedDate = new Date(value);
+
+    if (!Number.isNaN(parsedDate.getTime())) {
+      return parsedDate.toLocaleString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      });
+    }
+
+    return value;
+  };
+
+  /* =========================================================
      HANDLE PREDICTION
      ========================================================= */
 
   const handlePrediction = (result) => {
     const analysisTimestamp = new Date();
 
-    const detectionTime =
-      analysisTimestamp.toLocaleTimeString("en-GB", {
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: false,
-      });
+    const backendTimestamp =
+      result?.detection_time ||
+      result?.analysis_time ||
+      null;
+
+    const displayDetectionTime = backendTimestamp
+      ? formatDetectionTime(backendTimestamp)
+      : formatDetectionTime(analysisTimestamp);
 
     const analysisResult = {
       ...result,
-      detection_time:
-        result?.detection_time ||
-        result?.analysis_time ||
-        detectionTime,
+
+      /*
+       * Store a human-readable detection time for
+       * the dashboard display.
+       */
+      detection_time: displayDetectionTime,
+
+      /*
+       * Preserve the original backend timestamp separately
+       * when one exists.
+       */
+      raw_detection_time:
+        backendTimestamp ||
+        analysisTimestamp.toISOString(),
     };
 
     setData(analysisResult);
@@ -112,9 +149,24 @@ function App() {
         analysisResult?.file_name ||
         "CSV Upload",
 
-      time: detectionTime,
+      /*
+       * Human-readable value used by Recent Logs
+       * and dashboard display.
+       */
+      time: displayDetectionTime,
 
-      timestamp:
+      /*
+       * Human-readable timestamp is now what
+       * Attack Analytics receives.
+       */
+      timestamp: displayDetectionTime,
+
+      /*
+       * Keep the machine-readable ISO timestamp
+       * available if another component needs it.
+       */
+      raw_timestamp:
+        backendTimestamp ||
         analysisTimestamp.toISOString(),
 
       result: analysisResult,
@@ -153,8 +205,12 @@ function App() {
     ) || 0;
 
   const isNormal =
-    String(prediction).trim().toLowerCase() === "normal" ||
-    String(prediction).trim().toLowerCase() === "benign";
+    String(prediction)
+      .trim()
+      .toLowerCase() === "normal" ||
+    String(prediction)
+      .trim()
+      .toLowerCase() === "benign";
 
   const totalAnalyses =
     analysisHistory.length;
@@ -179,7 +235,10 @@ function App() {
     ? 0
     : Math.min(
         100,
-        Math.max(0, Math.round(confidence))
+        Math.max(
+          0,
+          Math.round(confidence)
+        )
       );
 
   const attackDescription =
@@ -194,12 +253,10 @@ function App() {
     data?.analysis_time ||
     "--:--:--";
 
-  /*
-   * Overall symbolic support shown in the summary card.
-   *
-   * This represents behavioural/rule-engine support and is
-   * not treated as statistical model confidence.
-   */
+  /* =========================================================
+     SYMBOLIC SUPPORT
+     ========================================================= */
+
   const symbolicConfidence =
     Number(
       data?.symbolic_support ??
@@ -208,12 +265,6 @@ function App() {
         0
     ) || 0;
 
-  /*
-   * Attack-rule evidence shown inside the AI Explanation.
-   *
-   * If the symbolic engine did not identify an attack rule,
-   * there is no direct attack-rule evidence to display.
-   */
   const symbolicRulePrediction =
     String(
       data?.rule_prediction ??
@@ -222,8 +273,10 @@ function App() {
     ).trim();
 
   const attackRuleSupport =
-    symbolicRulePrediction.toLowerCase() === "normal" ||
-    symbolicRulePrediction.toLowerCase() === "benign"
+    symbolicRulePrediction
+      .toLowerCase() === "normal" ||
+    symbolicRulePrediction
+      .toLowerCase() === "benign"
       ? 0
       : symbolicConfidence;
 
