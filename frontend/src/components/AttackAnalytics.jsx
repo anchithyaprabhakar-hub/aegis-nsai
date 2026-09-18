@@ -100,52 +100,18 @@ function AttackAnalytics({ logs = [], analysisHistory = [] }) {
       latestDetection?.confidence
     ) || 0;
 
-  /* =========================================================
-     FORMAT LATEST DETECTION TIME
-     ========================================================= */
-
   const getLatestTime = () => {
     if (!latestDetection) {
       return "--:--:--";
     }
 
-    const rawTime =
+    return (
       latestDetection.timestamp ||
       latestDetection.detection_time ||
       latestDetection.detectionTime ||
-      latestDetection.analysis_time;
-
-    if (!rawTime) {
-      return "--:--:--";
-    }
-
-    /*
-     * If the stored value is an ISO timestamp,
-     * convert it to the user's local date/time.
-     */
-    if (
-      typeof rawTime === "string" &&
-      rawTime.includes("T")
-    ) {
-      const parsedDate = new Date(rawTime);
-
-      if (!Number.isNaN(parsedDate.getTime())) {
-        return parsedDate.toLocaleString(
-          "en-GB",
-          {
-            day: "2-digit",
-            month: "short",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-            hour12: false,
-          }
-        );
-      }
-    }
-
-    return rawTime;
+      latestDetection.analysis_time ||
+      "--:--:--"
+    );
   };
 
   const metrics = [
