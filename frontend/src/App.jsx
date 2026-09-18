@@ -194,18 +194,55 @@ function App() {
     data?.analysis_time ||
     "--:--:--";
 
+  /*
+   * Overall symbolic support shown in the summary card.
+   *
+   * This represents behavioural/rule-engine support and is
+   * not treated as statistical model confidence.
+   */
   const symbolicConfidence =
     Number(
-      data?.symbolic_confidence ??
-        data?.symbolic_support ??
+      data?.symbolic_support ??
+        data?.symbolic_confidence ??
         data?.rule_support ??
         0
     ) || 0;
+
+  /*
+   * Attack-rule evidence shown inside the AI Explanation.
+   *
+   * If the symbolic engine did not identify an attack rule,
+   * there is no direct attack-rule evidence to display.
+   */
+  const symbolicRulePrediction =
+    String(
+      data?.rule_prediction ??
+        data?.symbolic_prediction ??
+        "Normal"
+    ).trim();
+
+  const attackRuleSupport =
+    symbolicRulePrediction.toLowerCase() === "normal" ||
+    symbolicRulePrediction.toLowerCase() === "benign"
+      ? 0
+      : symbolicConfidence;
 
   const explanation =
     data?.explanation ||
     data?.ai_explanation ||
     "The prediction is generated using the neuro-symbolic detection pipeline.";
+
+  const symbolicExplanation =
+    data?.symbolic_explanation ||
+    data?.rule_explanation ||
+    data?.symbolic_reasoning ||
+    "";
+
+  const decisionMessage =
+    data?.decision_message ||
+    data?.fusion_explanation ||
+    data?.neuro_symbolic_decision ||
+    "";
 
   /* =========================================================
      KNOWLEDGE GRAPH
@@ -585,6 +622,10 @@ function App() {
               prediction={prediction}
               confidence={confidence}
               explanation={explanation}
+              symbolicSupport={attackRuleSupport}
+              symbolicConfidence={attackRuleSupport}
+              symbolicExplanation={symbolicExplanation}
+              message={decisionMessage}
               data={data}
             />
 
