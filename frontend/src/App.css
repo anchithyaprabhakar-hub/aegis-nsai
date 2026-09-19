@@ -45,7 +45,7 @@ select {
 .main-content {
   width: min(1420px, calc(100% - 48px));
   margin: 0 auto;
-  padding: 28px 0 80px;
+  padding: 14px 0 50px;
 }
 
 /* =========================================================
@@ -73,13 +73,13 @@ select {
    ========================================================= */
 
 .system-status-card {
-  min-height: 96px;
-  padding: 20px 30px;
+  min-height: 70px;
+  padding: 13px 26px;
   display: grid;
   grid-template-columns: 1fr auto auto;
   align-items: center;
-  gap: 40px;
-  margin-bottom: 24px;
+  gap: 35px;
+  margin-bottom: 14px;
 }
 
 .system-status-left,
@@ -95,8 +95,8 @@ select {
 }
 
 .system-online-dot {
-  width: 12px;
-  height: 12px;
+  width: 11px;
+  height: 11px;
   border-radius: 50%;
   background: #22c55e;
   box-shadow:
@@ -106,7 +106,7 @@ select {
 
 .system-title {
   gap: 9px;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
 }
 
@@ -115,9 +115,9 @@ select {
 }
 
 .system-analysis-count {
-  margin-top: 5px;
+  margin-top: 2px;
   color: #8f8f8f;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .system-analysis-count strong {
@@ -132,7 +132,7 @@ select {
 
 .ai-engine-label {
   color: #707070;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 800;
   letter-spacing: 1.8px;
 }
@@ -140,9 +140,9 @@ select {
 .ai-engine-status {
   gap: 7px;
   color: #22c55e;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 800;
-  margin-top: 5px;
+  margin-top: 2px;
 }
 
 .system-time {
@@ -152,14 +152,14 @@ select {
 
 .system-date {
   color: #8b8b8b;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .system-clock {
   color: #f5f5f5;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
-  margin-top: 3px;
+  margin-top: 1px;
 }
 
 /* =========================================================
@@ -167,11 +167,11 @@ select {
    ========================================================= */
 
 .hero {
-  min-height: 250px;
-  padding: 42px 30px;
-  margin-bottom: 24px;
+  min-height: 185px;
+  padding: 27px 30px;
+  margin-bottom: 14px;
   border: 1px solid #252525;
-  border-radius: 26px;
+  border-radius: 24px;
   background:
     radial-gradient(
       circle at center,
@@ -191,38 +191,246 @@ select {
 }
 
 .hero-icon {
-  width: 54px;
-  height: 54px;
-  border-radius: 16px;
+  width: 46px;
+  height: 46px;
+  border-radius: 13px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 14px;
+  margin-bottom: 9px;
   color: #38bdf8;
   background: rgba(14, 165, 233, 0.10);
   border: 1px solid rgba(56, 189, 248, 0.35);
   box-shadow:
     0 0 30px rgba(14, 165, 233, 0.10);
-  font-size: 24px;
+  font-size: 21px;
 }
 
 .hero h1 {
   margin: 0;
-  font-size: clamp(42px, 5vw, 72px);
+  font-size: clamp(38px, 4.2vw, 60px);
   line-height: 1;
   font-weight: 900;
   letter-spacing: -2px;
 }
 
 .hero p {
-  margin: 14px 0 7px;
+  margin: 9px 0 4px;
   color: #c7c7c7;
-  font-size: 21px;
+  font-size: 18px;
 }
 
 .hero > span {
   color: #777;
+  font-size: 12px;
+}
+
+/* =========================================================
+   FILE UPLOAD
+   ========================================================= */
+
+.file-upload-card {
+  padding: 24px 30px;
+  margin-bottom: 14px;
+  border: 1px solid #292929;
+  border-radius: 22px;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(20, 20, 20, 0.98),
+      rgba(11, 11, 11, 0.98)
+    );
+  box-shadow:
+    0 18px 50px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+.file-upload-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.file-upload-icon {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.10);
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  font-size: 20px;
+}
+
+.file-upload-header h2 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 850;
+  text-align: center;
+}
+
+.file-upload-header p {
+  margin: 6px 0 0;
+  color: #909090;
+  font-size: 14px;
+  text-align: center;
+}
+
+.hidden-file-input {
+  display: none;
+}
+
+.file-upload-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.choose-file-button,
+.analyze-file-button,
+.reset-file-button {
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 11px;
   font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    background 0.2s ease;
+}
+
+.choose-file-button {
+  padding: 0 18px;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.28);
+}
+
+.analyze-file-button {
+  padding: 0 18px;
+  color: #061018;
+  background: #38bdf8;
+  border: 1px solid #38bdf8;
+}
+
+.reset-file-button {
+  width: 42px;
+  color: #fb7185;
+  background: rgba(251, 113, 133, 0.08);
+  border: 1px solid rgba(251, 113, 133, 0.28);
+}
+
+.choose-file-button:hover,
+.analyze-file-button:hover,
+.reset-file-button:hover {
+  transform: translateY(-2px);
+}
+
+.button-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.selected-file-panel {
+  margin-top: 14px;
+  padding: 13px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  border-radius: 13px;
+  background: #111111;
+  border: 1px solid #292929;
+}
+
+.selected-file-main {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+}
+
+.selected-file-icon {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  color: #34d399;
+  background: rgba(52, 211, 153, 0.08);
+  border: 1px solid rgba(52, 211, 153, 0.20);
+}
+
+.selected-file-details {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.selected-file-details strong {
+  color: #f5f5f5;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.selected-file-details span {
+  margin-top: 3px;
+  color: #777;
+  font-size: 11px;
+}
+
+.upload-status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.upload-error {
+  margin-top: 12px;
+  padding: 11px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 11px;
+  color: #fecaca;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  font-size: 12px;
+  text-align: center;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* =========================================================
@@ -1429,6 +1637,20 @@ select {
   .current-analysis-card {
     padding: 22px;
   }
+
+  .file-upload-card {
+    padding: 22px;
+  }
+
+  .file-upload-actions {
+    flex-wrap: wrap;
+  }
+
+  .selected-file-panel {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
 }
 
 @media (max-width: 500px) {
@@ -1458,5 +1680,19 @@ select {
   .analysis-meta {
     flex-direction: column;
     align-items: center;
+  }
+
+  .file-upload-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .choose-file-button,
+  .analyze-file-button {
+    width: 100%;
+  }
+
+  .reset-file-button {
+    width: 100%;
   }
 }
